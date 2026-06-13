@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #f9a8d4; margin: 0; }
+        .order-info { background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; border-bottom: 2px solid #eee; padding: 10px 0; }
+        td { padding: 10px 0; border-bottom: 1px solid #eee; }
+        .total { text-align: right; font-weight: bold; font-size: 1.2rem; margin-top: 20px; color: #f9a8d4; }
+        .footer { text-align: center; font-size: 0.8rem; color: #999; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CTUS LUX HERITAGE</h1>
+            <p>Cảm ơn bạn đã đặt hàng!</p>
+        </div>
+        
+        <div class="order-info">
+            <p><strong>Mã đơn hàng:</strong> <span th:text="${orderId}">#123</span></p>
+            <p><strong>Ngày đặt:</strong> <span th:text="${orderDate}">05/05/2026</span></p>
+            <p><strong>Địa chỉ giao hàng:</strong> <span th:text="${address}">Hà Nội, Việt Nam</span></p>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Sản phẩm</th>
+                    <th>SL</th>
+                    <th>Giá</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="item : ${items}">
+                    <td th:text="${item.productName}">Túi xách LV</td>
+                    <td th:text="${item.quantity}">1</td>
+                    <td th:text="${#numbers.formatDecimal(item.price, 0, 'COMMA', 0, 'POINT') + ' ₫'}">10,000,000 ₫</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="total">
+            Tổng cộng: <span th:text="${#numbers.formatDecimal(totalAmount, 0, 'COMMA', 0, 'POINT') + ' ₫'}">10,000,000 ₫</span>
+        </div>
+
+        <div class="footer">
+            <p>Đây là email tự động, vui lòng không phản hồi.</p>
+            <p>&copy; 2026 CTUS LUX Heritage. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

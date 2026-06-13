@@ -1,0 +1,28 @@
+# Build and Dependency Directories
+**/target/
+**/node_modules/
+**/dist/
+**/out/
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary / Log Files
+*.log
+eureka_status.json
+eureka_live.json
+
+# Local Uploads and media files (should not be in git)
+uploads/
+product-images/
+brand-images/
+
+# OS specific files
+.DS_Store
+Thumbs.db
