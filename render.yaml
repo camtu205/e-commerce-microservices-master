@@ -2,12 +2,13 @@ databases:
   - name: ecomdb
     plan: free
 
-redis:
-  - name: ecomredis
+services:
+  # 0. Redis Cache
+  - type: redis
+    name: ecomredis
     plan: free
     ipAllowList: []
 
-services:
   # 1. Eureka Server
   - type: web
     name: eureka-server
@@ -158,18 +159,16 @@ services:
         fromDatabase:
           name: ecomdb
           property: password
-      - key: SPRING_REDIS_HOST
-        fromRedis:
+      - key: SPRING_REDIS_URL
+        fromService:
           name: ecomredis
-          property: host
-      - key: SPRING_REDIS_PORT
-        fromRedis:
+          type: redis
+          property: connectionString
+      - key: SPRING_DATA_REDIS_URL
+        fromService:
           name: ecomredis
-          property: port
-      - key: SPRING_REDIS_PASSWORD
-        fromRedis:
-          name: ecomredis
-          property: password
+          type: redis
+          property: connectionString
 
   # 6. Chat Service
   - type: web
@@ -266,15 +265,13 @@ services:
         value: 8900
       - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
         value: http://eureka-server:8761/eureka
-      - key: SPRING_REDIS_HOST
-        fromRedis:
+      - key: SPRING_REDIS_URL
+        fromService:
           name: ecomredis
-          property: host
-      - key: SPRING_REDIS_PORT
-        fromRedis:
+          type: redis
+          property: connectionString
+      - key: SPRING_DATA_REDIS_URL
+        fromService:
           name: ecomredis
-          property: port
-      - key: SPRING_REDIS_PASSWORD
-        fromRedis:
-          name: ecomredis
-          property: password
+          type: redis
+          property: connectionString
