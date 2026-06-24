@@ -42,7 +42,7 @@ import {
 import AdminChat from './AdminChat';
 
 // --- Configuration ---
-const API_BASE_URL = 'http://localhost:8900/api';
+const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8900/api';
 const ENDPOINTS = {
   products: `${API_BASE_URL}/catalog/products`,
   adminProducts: `${API_BASE_URL}/catalog/admin/products`,
@@ -272,9 +272,9 @@ const formatImageUrl = (image?: string, isBrand = false) => {
   if (image.startsWith('http') || image.startsWith('data:')) return image;
   
   if (isBrand) {
-    return `http://localhost:8900/api/brand/brands/images/${image}`;
+    return `${API_BASE_URL}/brand/brands/images/${image}`;
   }
-  return `http://localhost:8900/api/catalog/products/images/${image}`;
+  return `${API_BASE_URL}/catalog/products/images/${image}`;
 };
 
 const SidebarItem = ({ icon: Icon, text, active, onClick, collapsed }: any) => (
@@ -1537,7 +1537,130 @@ export default function App() {
     });
     const revenueData = Object.entries(revStats).map(([date, revenue]) => ({ date, revenue }));
 
-    return { topProducts, categoryData, revenueData };
+    // Doanh thu theo ngày (Báo cáo chi tiết)
+    const dailyRevenueMap: Record<string, { count: number; total: number }> = {};
+    // Mặt hàng bán chạy theo ngày
+    const dailyProductMap: Record<string, Record<string, { quantity: number; image?: string; price: number }>> = {};
+
+    orders.forEach(o => {
+      if (!o.orderedDate) return;
+      let dateStr = o.orderedDate;
+      if (typeof dateStr === 'string' && dateStr.includes('T')) {
+        dateStr = dateStr.split('T')[0];
+      }
+      
+      const dateKey = dateStr;
+
+      if (!dailyRevenueMap[dateKey]) {
+        dailyRevenueMap[dateKey] = { count: 0, total: 0 };
+      }
+      dailyRevenueMap[dateKey].count += 1;
+      dailyRevenueMap[dateKey].total += (o.total || 0);
+
+      if (!dailyProductMap[dateKey]) {
+        dailyProductMap[dateKey] = {};
+      }
+      o.items?.forEach(i => {
+        const name = i.product?.productName || i.productName || 'Sản phẩm không tên';
+        const qty = i.quantity || 0;
+        const price = i.product?.price || i.price || 0;
+        const image = i.product?.image || i.productImage || '';
+
+        if (!dailyProductMap[dateKey][name]) {
+          dailyProductMap[dateKey][name] = { quantity: 0, image, price };
+        }
+        dailyProductMap[dateKey][name].quantity += qty;
+      });
+    });
+
+    const dailyRevenueReport = Object.entries(dailyRevenueMap)
+      .map(([date, data]) => ({ date, ...data }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    const dailyBestSellersReport: Array<{ date: string; productName: string; quantity: number; image?: string; totalRevenue: number }> = [];
+
+    Object.entries(dailyProductMap).forEach(([date, products]) => {
+      Object.entries(products).forEach(([productName, data]) => {
+        dailyBestSellersReport.push({
+          date,
+          productName,
+          quantity: data.quantity,
+          image: data.image,
+          totalRevenue: data.quantity * data.price
+        });
+      });
+    });
+
+    dailyBestSellersReport.sort((a, b) => {
+      const dateCompare = b.date.localeCompare(a.date);
+      if (dateCompare !== 0) return dateCompare;
+      return b.quantity - a.quantity;
+    });
+
+    return { topProducts, categoryData, revenueData, dailyRevenueReport, dailyBestSellersReport };
+  };
+
+  const exportToExcel = (type: 'day' | 'week') => {
+    let csvContent = '\uFEFF'; // UTF-8 BOM to display Vietnamese characters correctly in Excel
+    
+    if (type === 'day') {
+      csvContent += 'BÁO CÁO DOANH THU THEO NGÀY\n';
+      csvContent += 'Ngày,Số đơn hàng,Tổng doanh thu (₫)\n';
+      dashData.dailyRevenueReport.forEach(r => {
+        csvContent += `"${r.date}",${r.count},${r.total}\n`;
+      });
+    } else {
+      // Calculate weekly report on the fly
+      const weeklyRevenueMap: Record<string, { count: number; total: number }> = {};
+      orders.forEach(o => {
+        if (!o.orderedDate) return;
+        let dateStr = o.orderedDate;
+        if (typeof dateStr === 'string' && dateStr.includes('T')) {
+          dateStr = dateStr.split('T')[0];
+        }
+        
+        const d = new Date(dateStr);
+        const day = d.getDay();
+        const diffToMonday = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diffToMonday));
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        
+        const formatDate = (date: Date) => {
+          const dd = String(date.getDate()).padStart(2, '0');
+          const mm = String(date.getMonth() + 1).padStart(2, '0');
+          const yyyy = date.getFullYear();
+          return `${dd}/${mm}/${yyyy}`;
+        };
+        const weekRange = `${formatDate(monday)} - ${formatDate(sunday)}`;
+        
+        if (!weeklyRevenueMap[weekRange]) {
+          weeklyRevenueMap[weekRange] = { count: 0, total: 0 };
+        }
+        weeklyRevenueMap[weekRange].count += 1;
+        weeklyRevenueMap[weekRange].total += (o.total || 0);
+      });
+
+      const weeklyReport = Object.entries(weeklyRevenueMap)
+        .map(([week, data]) => ({ week, ...data }))
+        .sort((a, b) => b.week.localeCompare(a.week));
+
+      csvContent += 'BÁO CÁO DOANH THU THEO TUẦN\n';
+      csvContent += 'Tuần,Số đơn hàng,Tổng doanh thu (₫)\n';
+      weeklyReport.forEach(w => {
+        csvContent += `"${w.week}",${w.count},${w.total}\n`;
+      });
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Bao_cao_doanh_thu_theo_${type === 'day' ? 'ngay' : 'tuan'}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const getLowStockItems = () => {
@@ -1979,6 +2102,112 @@ export default function App() {
                       {dashData.topProducts.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', opacity: 0.5 }}>Chưa có dữ liệu sản phẩm</td></tr>}
                     </tbody>
                   </table>
+                </div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginTop: '24px' }}>
+                {/* Báo cáo doanh thu theo ngày */}
+                <div className="dashboard-card glass">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div className="card-title" style={{ margin: 0 }}>Báo cáo doanh thu theo ngày</div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button 
+                        onClick={() => exportToExcel('day')} 
+                        style={{
+                          background: 'rgba(16, 185, 129, 0.2)',
+                          color: '#10b981',
+                          border: '1px solid rgba(16, 185, 129, 0.4)',
+                          borderRadius: '8px',
+                          padding: '6px 12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                        title="Xuất Excel theo ngày"
+                      >
+                        <FileText size={14} />
+                        Xuất Excel (Ngày)
+                      </button>
+                      <button 
+                        onClick={() => exportToExcel('week')} 
+                        style={{
+                          background: 'rgba(59, 130, 246, 0.2)',
+                          color: '#3b82f6',
+                          border: '1px solid rgba(59, 130, 246, 0.4)',
+                          borderRadius: '8px',
+                          padding: '6px 12px',
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          transition: 'all 0.2s'
+                        }}
+                        title="Xuất Excel theo tuần"
+                      >
+                        <FileText size={14} />
+                        Xuất Excel (Tuần)
+                      </button>
+                    </div>
+                  </div>
+                  <div className="table-container" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                    <table style={{ width: '100%', fontSize: '0.9rem' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', opacity: 0.6 }}>
+                          <th style={{ paddingBottom: '12px' }}>Ngày</th>
+                          <th style={{ paddingBottom: '12px' }}>Số đơn hàng</th>
+                          <th style={{ paddingBottom: '12px' }}>Tổng doanh thu</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashData.dailyRevenueReport.map((r) => (
+                          <tr key={r.date} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: '12px 0' }}>{r.date}</td>
+                            <td>{r.count} đơn</td>
+                            <td className="font-bold" style={{ color: '#10b981' }}>{r.total.toLocaleString()} ₫</td>
+                          </tr>
+                        ))}
+                        {dashData.dailyRevenueReport.length === 0 && (
+                          <tr><td colSpan={3} style={{ textAlign: 'center', padding: '20px', opacity: 0.5 }}>Chưa có dữ liệu doanh thu</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Các mặt hàng bán chạy trong ngày */}
+                <div className="dashboard-card glass">
+                  <div className="card-title">Mặt hàng bán chạy trong ngày</div>
+                  <div className="table-container" style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                    <table style={{ width: '100%', fontSize: '0.9rem' }}>
+                      <thead>
+                        <tr style={{ textAlign: 'left', opacity: 0.6 }}>
+                          <th style={{ paddingBottom: '12px' }}>Ngày</th>
+                          <th style={{ paddingBottom: '12px' }}>Sản phẩm</th>
+                          <th style={{ paddingBottom: '12px' }}>Số lượng bán</th>
+                          <th style={{ paddingBottom: '12px' }}>Doanh thu</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dashData.dailyBestSellersReport.map((p, index) => (
+                          <tr key={`${p.date}-${p.productName}-${index}`} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: '12px 0', opacity: 0.8 }}>{p.date}</td>
+                            <td style={{ fontWeight: 500 }}>{p.productName}</td>
+                            <td className="font-bold" style={{ color: '#f9a8d4' }}>{p.quantity} cái</td>
+                            <td>{p.totalRevenue.toLocaleString()} ₫</td>
+                          </tr>
+                        ))}
+                        {dashData.dailyBestSellersReport.length === 0 && (
+                          <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', opacity: 0.5 }}>Chưa có dữ liệu mặt hàng bán chạy</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>

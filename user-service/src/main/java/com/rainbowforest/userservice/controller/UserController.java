@@ -15,7 +15,7 @@ public class UserController {
 
     @Autowired
     private UserService userService;
-    
+
     @Autowired
     private HeaderGenerator headerGenerator;
 
@@ -24,68 +24,66 @@ public class UserController {
 
     @Autowired
     private com.rainbowforest.userservice.feignclient.EmailClient emailClient;
-    
-    @GetMapping (value = "/accounts/users")
-public ResponseEntity<List<User>> getAllUsers(){
-    List<User> users = userService.getAllUsers();
-    // Luôn trả về 200 OK để xác nhận API hoạt động
-    return new ResponseEntity<List<User>>(
-            users, 
-            headerGenerator.getHeadersForSuccessGetMethod(), 
-            HttpStatus.OK);
-}
 
-    @GetMapping (value = "/accounts/customers")
-    public ResponseEntity<List<User>> getCustomers(){
+    @GetMapping(value = "/accounts/users")
+    public ResponseEntity<List<User>> getAllUsers() {
+        List<User> users = userService.getAllUsers();
+        // Luôn trả về 200 OK để xác nhận API hoạt động
+        return new ResponseEntity<List<User>>(
+                users,
+                headerGenerator.getHeadersForSuccessGetMethod(),
+                HttpStatus.OK);
+    }
+
+    @GetMapping(value = "/accounts/customers")
+    public ResponseEntity<List<User>> getCustomers() {
         List<User> users = userService.getCustomers();
         return new ResponseEntity<List<User>>(
-                users, 
-                headerGenerator.getHeadersForSuccessGetMethod(), 
+                users,
+                headerGenerator.getHeadersForSuccessGetMethod(),
                 HttpStatus.OK);
     }
 
-    @GetMapping (value = "/accounts/staff")
-    public ResponseEntity<List<User>> getStaff(){
+    @GetMapping(value = "/accounts/staff")
+    public ResponseEntity<List<User>> getStaff() {
         List<User> users = userService.getStaff();
         return new ResponseEntity<List<User>>(
-                users, 
-                headerGenerator.getHeadersForSuccessGetMethod(), 
+                users,
+                headerGenerator.getHeadersForSuccessGetMethod(),
                 HttpStatus.OK);
     }
 
-    @GetMapping (value = "/accounts/users", params = "name")
-    public ResponseEntity<User> getUserByName(@RequestParam("name") String userName){
-    	User user = userService.getUserByName(userName);
-    	if(user != null) {
-    		return new ResponseEntity<User>(
-    				user,
-    				headerGenerator.
-    				getHeadersForSuccessGetMethod(),
-    				HttpStatus.OK);
-    	}
+    @GetMapping(value = "/accounts/users", params = "name")
+    public ResponseEntity<User> getUserByName(@RequestParam("name") String userName) {
+        User user = userService.getUserByName(userName);
+        if (user != null) {
+            return new ResponseEntity<User>(
+                    user,
+                    headerGenerator.getHeadersForSuccessGetMethod(),
+                    HttpStatus.OK);
+        }
         return new ResponseEntity<User>(
-        		headerGenerator.getHeadersForError(),
-        		HttpStatus.NOT_FOUND);
+                headerGenerator.getHeadersForError(),
+                HttpStatus.NOT_FOUND);
     }
 
-    @GetMapping (value = "/accounts/users/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable("id") Long id){
+    @GetMapping(value = "/accounts/users/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable("id") Long id) {
         User user = userService.getUserById(id);
-        if(user != null) {
-    		return new ResponseEntity<User>(
-    				user,
-    				headerGenerator.
-    				getHeadersForSuccessGetMethod(),
-    				HttpStatus.OK);
-    	}
+        if (user != null) {
+            return new ResponseEntity<User>(
+                    user,
+                    headerGenerator.getHeadersForSuccessGetMethod(),
+                    HttpStatus.OK);
+        }
         return new ResponseEntity<User>(
-        		headerGenerator.getHeadersForError(),
-        		HttpStatus.NOT_FOUND);
+                headerGenerator.getHeadersForError(),
+                HttpStatus.NOT_FOUND);
     }
 
-    @PostMapping (value = "/accounts/users")
-    public ResponseEntity<?> addUser(@RequestBody User user, HttpServletRequest request){
-        if(user != null) {
+    @PostMapping(value = "/accounts/users")
+    public ResponseEntity<?> addUser(@RequestBody User user, HttpServletRequest request) {
+        if (user != null) {
             try {
                 User savedUser = userService.saveUser(user);
                 return new ResponseEntity<User>(
@@ -101,7 +99,7 @@ public ResponseEntity<List<User>> getAllUsers(){
         return new ResponseEntity<String>("Payload bị trống hoặc không hợp lệ.", HttpStatus.BAD_REQUEST);
     }
 
-	@PostMapping(value = "/accounts/login")
+    @PostMapping(value = "/accounts/login")
     public ResponseEntity<User> login(@RequestBody User loginUser) {
         User user = userService.getUserByName(loginUser.getUserName());
         if (user != null && passwordEncoder.matches(loginUser.getUserPassword(), user.getUserPassword())) {
@@ -109,7 +107,8 @@ public ResponseEntity<List<User>> getAllUsers(){
         }
         return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
     }
-    @PutMapping (value = "/accounts/users/{id}")
+
+    @PutMapping(value = "/accounts/users/{id}")
     public ResponseEntity<User> updateUser(@PathVariable("id") Long id, @RequestBody User user) {
         User updatedUser = userService.updateUser(id, user);
         if (updatedUser != null) {
@@ -124,7 +123,8 @@ public ResponseEntity<List<User>> getAllUsers(){
     }
 
     @PostMapping(value = "/accounts/users/{id}/addresses")
-    public ResponseEntity<com.rainbowforest.userservice.entity.Address> addAddress(@PathVariable("id") Long id, @RequestBody com.rainbowforest.userservice.entity.Address address) {
+    public ResponseEntity<com.rainbowforest.userservice.entity.Address> addAddress(@PathVariable("id") Long id,
+            @RequestBody com.rainbowforest.userservice.entity.Address address) {
         com.rainbowforest.userservice.entity.Address savedAddress = userService.addAddress(id, address);
         if (savedAddress != null) {
             return new ResponseEntity<>(savedAddress, HttpStatus.CREATED);
@@ -154,10 +154,13 @@ public ResponseEntity<List<User>> getAllUsers(){
             }
             return ResponseEntity.ok(java.util.Collections.singletonMap("maskedEmail", email));
         }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Username không tồn tại hoặc tài khoản chưa cập nhật email.");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Username không tồn tại hoặc tài khoản chưa cập nhật email.");
     }
 
-    @RequestMapping(value = "/accounts/forgot-password", method = {org.springframework.web.bind.annotation.RequestMethod.POST, org.springframework.web.bind.annotation.RequestMethod.GET})
+    @RequestMapping(value = "/accounts/forgot-password", method = {
+            org.springframework.web.bind.annotation.RequestMethod.POST,
+            org.springframework.web.bind.annotation.RequestMethod.GET })
     public ResponseEntity<?> forgotPassword(@RequestBody java.util.Map<String, String> requestBody) {
         String email = requestBody.get("email");
         String otp = userService.createPasswordResetTokenForUser(email);
@@ -167,11 +170,11 @@ public ResponseEntity<List<User>> getAllUsers(){
                 emailRequest.put("to", email);
                 emailRequest.put("subject", "Khôi phục mật khẩu - CTUS LUX HERITAGE");
                 emailRequest.put("templateName", "forgot-password");
-                
+
                 java.util.Map<String, Object> model = new java.util.HashMap<>();
                 model.put("otp", otp);
                 emailRequest.put("templateModel", model);
-                
+
                 emailClient.sendEmail(emailRequest);
                 return ResponseEntity.ok("OTP has been sent to your email.");
             } catch (Exception e) {
@@ -190,5 +193,20 @@ public ResponseEntity<List<User>> getAllUsers(){
             return ResponseEntity.ok("Password has been reset successfully.");
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid or expired OTP.");
+    }
+
+    @PutMapping("/accounts/users/{id}/change-password")
+    public ResponseEntity<?> changePassword(@PathVariable("id") Long id, @RequestBody java.util.Map<String, String> requestBody) {
+        String currentPassword = requestBody.get("currentPassword");
+        String newPassword = requestBody.get("newPassword");
+        
+        try {
+            userService.changePassword(id, currentPassword, newPassword);
+            return ResponseEntity.ok(java.util.Collections.singletonMap("message", "Đổi mật khẩu thành công."));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(java.util.Collections.singletonMap("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(java.util.Collections.singletonMap("error", "Có lỗi xảy ra: " + e.getMessage()));
+        }
     }
 }

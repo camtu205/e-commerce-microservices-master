@@ -1,4 +1,3 @@
-import React from 'react';
 import { Phone, Mail, MapPin, ArrowRight, Share2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 

@@ -1,19 +1,19 @@
-import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8900/api';
+const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8900/api';
+const WS_BASE_URL = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api$/, '');
 
 export const ENDPOINTS = {
   products: `${API_BASE_URL}/catalog/products`,
   categories: `${API_BASE_URL}/catalog/categories`,
   brands: `${API_BASE_URL}/brand/brands`,
-  orders: `http://localhost:8813/shop/order`,
-  userOrders: (userName: string) => `http://localhost:8813/shop/order/user/${userName}`,
+  orders: `${API_BASE_URL}/shop/order`,
+  userOrders: (userName: string) => `${API_BASE_URL}/shop/order/user/${userName}`,
   login: `${API_BASE_URL}/accounts/login`,
   register: `${API_BASE_URL}/accounts/registration`,
   banners: `${API_BASE_URL}/catalog/banners`,
   collections: `${API_BASE_URL}/catalog/collections`,
   storeInfo: `${API_BASE_URL}/catalog/store-info`,
-  orderDetail: (id: number | string) => `http://localhost:8813/shop/order-details/${id}`,
+  orderDetail: (id: number | string) => `${API_BASE_URL}/shop/order-details/${id}`,
   flashSales: `${API_BASE_URL}/catalog/flash-sales`,
   flashSalePurchase: (itemId: number) => `${API_BASE_URL}/catalog/flash-sales/items/${itemId}/purchase`,
   membershipTiers: `${API_BASE_URL}/accounts/membership-tiers`,
@@ -22,12 +22,13 @@ export const ENDPOINTS = {
   chatHistory: (conversationId: number) => `${API_BASE_URL}/chat/history/${conversationId}`,
   conversations: `${API_BASE_URL}/chat/conversations`,
   customerConversation: (customerId: number) => `${API_BASE_URL}/chat/conversation/customer/${customerId}`,
-  chatWS: `http://localhost:8900/ws-chat`,
+  chatWS: `${WS_BASE_URL}/ws-chat`,
   notifications: `${API_BASE_URL}/accounts/notifications`,
   userNotifications: (userId: number) => `${API_BASE_URL}/accounts/notifications/user/${userId}`,
   unreadNotificationsCount: (userId: number) => `${API_BASE_URL}/accounts/notifications/unread-count/${userId}`,
   markNotificationRead: (id: number) => `${API_BASE_URL}/accounts/notifications/mark-as-read/${id}`,
-  markAllNotificationsRead: (userId: number) => `${API_BASE_URL}/accounts/notifications/mark-all-read/${userId}`
+  markAllNotificationsRead: (userId: number) => `${API_BASE_URL}/accounts/notifications/mark-all-read/${userId}`,
+  changePassword: (id: number | string) => `${API_BASE_URL}/accounts/users/${id}/change-password`
 };
 
 export type Review = {
@@ -134,6 +135,10 @@ export type Order = {
   status: string;
   total: number;
   items: OrderItem[];
+  paymentMethod?: string;
+  shippingRecipientName?: string;
+  shippingPhoneNumber?: string;
+  shippingAddress?: string;
 }
 
 export type CartItem = {

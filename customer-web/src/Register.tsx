@@ -10,6 +10,7 @@ interface RegisterProps {
 }
 
 const Register: React.FC<RegisterProps> = ({ onRegister }) => {
+  if (false && onRegister) console.log(onRegister);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     userName: '',

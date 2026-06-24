@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronLeft, Star, Plus, ThumbsUp, Send, User, MessageSquare } from 'lucide-react';
+import { ChevronLeft, Star, ThumbsUp, Send, User, MessageSquare } from 'lucide-react';
 import type { Product, Review } from './api';
 import { ENDPOINTS } from './api';
 import axios from 'axios';
@@ -9,8 +9,8 @@ interface ProductDetailProps {
   product: Product;
   cartCount: number;
   onClose: () => void;
-  onAddToCart: (p: Product, quantity: number, size?: string, color?: string) => void;
-  onBuyNow: (p: Product, quantity: number, size?: string, color?: string) => void;
+  onAddToCart: (p: Product, quantity: number, size?: string, color?: string, flashSaleItem?: any) => void;
+  onBuyNow: (p: Product, quantity: number, size?: string, color?: string, flashSaleItem?: any) => void;
   onOpenCart: () => void;
   getImgUrl: (img: string | undefined) => string;
   flashSaleItem?: any;
@@ -302,7 +302,7 @@ const ProductDetail: React.FC<ProductDetailProps> = ({
 
             {/* Product Description */}
             <div className="pt-10 border-t border-neutral-100">
-              <p className="text-sm leading-relaxed text-neutral-500 font-light italic">
+              <p className="text-sm leading-relaxed text-neutral-500 font-light italic font-serif">
                 {product.discription || "Một kiệt tác từ CTUS LUX, mang đậm dấu ấn di sản và phong cách hiện đại."}
               </p>
             </div>

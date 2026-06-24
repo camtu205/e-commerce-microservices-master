@@ -1,0 +1,280 @@
+databases:
+  - name: ecomdb
+    plan: free
+
+redis:
+  - name: ecomredis
+    plan: free
+    ipAllowList: []
+
+services:
+  # 1. Eureka Server
+  - type: web
+    name: eureka-server
+    env: docker
+    dockerContext: eureka-server
+    dockerfilePath: eureka-server/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8761
+
+  # 2. User Service
+  - type: web
+    name: user-service
+    env: docker
+    dockerContext: user-service
+    dockerfilePath: user-service/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8811
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://eureka-server:8761/eureka
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: DB_HOST
+        fromDatabase:
+          name: ecomdb
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ecomdb
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: ecomdb
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ecomdb
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ecomdb
+          property: password
+
+  # 3. Brand Service
+  - type: web
+    name: brand-service
+    env: docker
+    dockerContext: brand-service
+    dockerfilePath: brand-service/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8816
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://eureka-server:8761/eureka
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: DB_HOST
+        fromDatabase:
+          name: ecomdb
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ecomdb
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: ecomdb
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ecomdb
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ecomdb
+          property: password
+
+  # 4. Product Catalog Service
+  - type: web
+    name: product-catalog-service
+    env: docker
+    dockerContext: product-catalog-service
+    dockerfilePath: product-catalog-service/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8810
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://eureka-server:8761/eureka
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: DB_HOST
+        fromDatabase:
+          name: ecomdb
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ecomdb
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: ecomdb
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ecomdb
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ecomdb
+          property: password
+
+  # 5. Order Service
+  - type: web
+    name: order-service
+    env: docker
+    dockerContext: order-service
+    dockerfilePath: order-service/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8813
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://eureka-server:8761/eureka
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: DB_HOST
+        fromDatabase:
+          name: ecomdb
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ecomdb
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: ecomdb
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ecomdb
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ecomdb
+          property: password
+      - key: SPRING_REDIS_HOST
+        fromRedis:
+          name: ecomredis
+          property: host
+      - key: SPRING_REDIS_PORT
+        fromRedis:
+          name: ecomredis
+          property: port
+      - key: SPRING_REDIS_PASSWORD
+        fromRedis:
+          name: ecomredis
+          property: password
+
+  # 6. Chat Service
+  - type: web
+    name: chat-service
+    env: docker
+    dockerContext: chat-service
+    dockerfilePath: chat-service/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8817
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://eureka-server:8761/eureka
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: DB_HOST
+        fromDatabase:
+          name: ecomdb
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ecomdb
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: ecomdb
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ecomdb
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ecomdb
+          property: password
+
+  # 7. Product Recommendation Service
+  - type: web
+    name: product-recommendation-service
+    env: docker
+    dockerContext: product-recommendation-service
+    dockerfilePath: product-recommendation-service/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8812
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://eureka-server:8761/eureka
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - key: DB_HOST
+        fromDatabase:
+          name: ecomdb
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: ecomdb
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: ecomdb
+          property: database
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: ecomdb
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: ecomdb
+          property: password
+
+  # 8. Email Service
+  - type: web
+    name: email-service
+    env: docker
+    dockerContext: email-service
+    dockerfilePath: email-service/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8815
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://eureka-server:8761/eureka
+
+  # 9. API Gateway
+  - type: web
+    name: api-gateway
+    env: docker
+    dockerContext: api-gateway
+    dockerfilePath: api-gateway/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8900
+      - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+        value: http://eureka-server:8761/eureka
+      - key: SPRING_REDIS_HOST
+        fromRedis:
+          name: ecomredis
+          property: host
+      - key: SPRING_REDIS_PORT
+        fromRedis:
+          name: ecomredis
+          property: port
+      - key: SPRING_REDIS_PASSWORD
+        fromRedis:
+          name: ecomredis
+          property: password

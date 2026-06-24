@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ChevronLeft, Package, Clock, CreditCard, Truck, MapPin, ShieldCheck, ShoppingBag, Download } from 'lucide-react';
+import { ChevronLeft, Package, Clock, CreditCard, Truck, MapPin, ShieldCheck, ShoppingBag, Download, AlertCircle } from 'lucide-react';
 import { ENDPOINTS } from './api';
 import type { Order } from './api';
 
@@ -175,9 +175,9 @@ const OrderDetailPage: React.FC<OrderDetailPageProps> = ({ user, getImgUrl }) =>
                 <div>
                   <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mb-1">Địa chỉ giao hàng</p>
                   <p className="text-sm font-medium leading-relaxed">
-                    {user.userDetails?.firstName} {user.userDetails?.lastName}<br />
-                    {user.userDetails?.streetNumber} {user.userDetails?.street}<br />
-                    {user.userDetails?.locality}, {user.userDetails?.country}
+                    <strong>{order.shippingRecipientName || `${user.userDetails?.firstName || ''} ${user.userDetails?.lastName || ''}`.trim()}</strong><br />
+                    {order.shippingPhoneNumber || user.userDetails?.phoneNumber}<br />
+                    {order.shippingAddress || (user.userDetails ? `${user.userDetails.streetNumber || ''} ${user.userDetails.street || ''}, ${user.userDetails.locality || ''}, ${user.userDetails.country || ''}`.replace(/^\s*,?\s*/, '').replace(/,\s*,/g, ',') : '')}
                   </p>
                 </div>
               </div>

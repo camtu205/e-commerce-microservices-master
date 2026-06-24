@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Package, Clock, CheckCircle, Truck, AlertCircle, X, Star, Send } from 'lucide-react';
+import { ChevronLeft, Package, X, Star, Send } from 'lucide-react';
 import { ENDPOINTS } from './api';
 import type { Order } from './api';
 
@@ -18,7 +18,6 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ user, onBack, getImgUrl }) 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'ALL' | 'PENDING' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED'>('ALL');
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
 
   useEffect(() => {
@@ -140,19 +139,19 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ user, onBack, getImgUrl }) 
 
                   <div className="space-y-2 mb-8">
                     {order.items.slice(0, 2).map((item, idx) => (
-                      <div key={idx} className="item-row !mb-2 !p-3">
-                        <div className="item-image-container !w-16 !h-16">
-                          <img src={getImgUrl(item.product?.image || item.image)} alt="" />
+                      <div key={idx} className="flex gap-6 items-start p-5 mb-3 bg-neutral-50/40 border border-neutral-100 rounded-2xl transition-all duration-300">
+                        <div className="item-image-container !w-32 !h-40 overflow-hidden rounded-xl bg-neutral-50 flex-shrink-0 border border-neutral-100">
+                          <img src={getImgUrl(item.product?.image || item.image)} alt="" className="w-full h-full object-cover" />
                         </div>
-                        <div className="item-info-main">
+                        <div className="item-info-main flex-1 py-2">
                           <h4 className="font-bold text-sm tracking-tight text-neutral-800 truncate-text">{item.product?.productName || item.productName || 'Sản phẩm'}</h4>
-                          <div className="flex gap-3 mt-1">
+                          <div className="flex gap-3 mt-2">
                             <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">SL: {item.quantity}</p>
                             {item.selectedSize && <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">• Size: {item.selectedSize}</p>}
                             {item.selectedColor && <p className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">• Màu: {item.selectedColor}</p>}
                           </div>
                         </div>
-                        <div className="item-price-area">
+                        <div className="item-price-area text-right pt-2 pl-4">
                           <p className="font-bold text-base text-black">{(Number(item.product?.price || item.price || 0) * item.quantity).toLocaleString()} ₫</p>
                         </div>
                       </div>
@@ -206,7 +205,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ user, onBack, getImgUrl }) 
 
 const ReviewModal: React.FC<{ order: Order, user: any, onClose: () => void, getImgUrl: (img: string | undefined) => string }> = ({ order, user, onClose, getImgUrl }) => {
   const [reviews, setReviews] = useState<any[]>(order.items.map(item => ({
-    productId: item.product?.productId || item.productId,
+    productId: (item.product as any)?.productId || (item as any)?.productId || item.product?.id,
     productName: item.product?.productName || item.productName,
     image: item.product?.image || item.image,
     rating: 5,

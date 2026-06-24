@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { ChevronLeft, CreditCard, Truck, MapPin, Package, ShieldCheck, CheckCircle2, ArrowRight, Tag, X, AlertTriangle, Award } from 'lucide-react';
-import type { CartItem, Product, Address } from './api';
+import { ChevronLeft, CreditCard, Truck, MapPin, ShieldCheck, CheckCircle2, ArrowRight, Tag, X, AlertTriangle, Award, QrCode } from 'lucide-react';
+import type { CartItem, Address } from './api';
+
+const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8900/api';
 
 interface CheckoutProps {
   user: any;
@@ -41,6 +43,118 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
     isDefault: false
   });
 
+  // Vietnamese Administrative Divisions states
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+
+  const [selectedProvinceCode, setSelectedProvinceCode] = useState<string>('');
+  const [selectedDistrictCode, setSelectedDistrictCode] = useState<string>('');
+  const [selectedWardCode, setSelectedWardCode] = useState<string>('');
+
+  const [selectedProvince, setSelectedProvince] = useState<string>('');
+  const [selectedDistrict, setSelectedDistrict] = useState<string>('');
+  const [selectedWard, setSelectedWard] = useState<string>('');
+  const [detailAddress, setDetailAddress] = useState<string>('');
+
+  const formatAddress = (addr: Address) => {
+    if (!addr) return '';
+    const parts = [];
+    if (addr.streetNumber) parts.push(addr.streetNumber);
+    if (addr.street) parts.push(addr.street);
+    if (addr.locality) parts.push(addr.locality);
+    if (addr.country) parts.push(addr.country);
+    return parts.filter(Boolean).join(', ');
+  };
+
+  // Load provinces on mount
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      try {
+        const res = await axios.get('https://provinces.open-api.vn/api/');
+        setProvinces(res.data);
+      } catch (err) {
+        console.error("Failed to fetch provinces", err);
+      }
+    };
+    fetchProvinces();
+  }, []);
+
+  // Load districts when province code changes
+  useEffect(() => {
+    if (!selectedProvinceCode) {
+      setDistricts([]);
+      setWards([]);
+      setSelectedDistrictCode('');
+      setSelectedWardCode('');
+      setSelectedDistrict('');
+      setSelectedWard('');
+      return;
+    }
+    const fetchDistricts = async () => {
+      try {
+        const res = await axios.get(`https://provinces.open-api.vn/api/p/${selectedProvinceCode}?depth=2`);
+        setDistricts(res.data.districts || []);
+      } catch (err) {
+        console.error("Failed to fetch districts", err);
+      }
+    };
+    fetchDistricts();
+  }, [selectedProvinceCode]);
+
+  // Load wards when district code changes
+  useEffect(() => {
+    if (!selectedDistrictCode) {
+      setWards([]);
+      setSelectedWardCode('');
+      setSelectedWard('');
+      return;
+    }
+    const fetchWards = async () => {
+      try {
+        const res = await axios.get(`https://provinces.open-api.vn/api/d/${selectedDistrictCode}?depth=2`);
+        setWards(res.data.wards || []);
+      } catch (err) {
+        console.error("Failed to fetch wards", err);
+      }
+    };
+    fetchWards();
+  }, [selectedDistrictCode]);
+
+  const handleProvinceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    setSelectedProvinceCode(code);
+    const provinceObj = provinces.find(p => String(p.code) === code);
+    setSelectedProvince(provinceObj ? provinceObj.name : '');
+    
+    // Clear child selections (Rule 3)
+    setSelectedDistrictCode('');
+    setSelectedDistrict('');
+    setSelectedWardCode('');
+    setSelectedWard('');
+    setDistricts([]);
+    setWards([]);
+  };
+
+  const handleDistrictChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    setSelectedDistrictCode(code);
+    const districtObj = districts.find(d => String(d.code) === code);
+    setSelectedDistrict(districtObj ? districtObj.name : '');
+
+    // Clear child selections (Rule 3)
+    setSelectedWardCode('');
+    setSelectedWard('');
+    setWards([]);
+  };
+
+  const handleWardChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const code = e.target.value;
+    setSelectedWardCode(code);
+    const wardObj = wards.find(w => String(w.code) === code);
+    setSelectedWard(wardObj ? wardObj.name : '');
+  };
+
   useEffect(() => {
     setAddresses(user.userDetails?.addresses || []);
     if (!selectedAddress && user.userDetails?.addresses?.length > 0) {
@@ -50,14 +164,28 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
   }, [user]);
 
   const handleAddAddress = async () => {
-    if (!newAddress.recipientName || !newAddress.phoneNumber || !newAddress.street) {
+    if (
+      !newAddress.recipientName || 
+      !newAddress.phoneNumber || 
+      !selectedProvince || 
+      !selectedDistrict || 
+      !selectedWard || 
+      !detailAddress
+    ) {
       alert("Vui lòng điền đầy đủ các thông tin bắt buộc!");
       return;
     }
     setIsAddingAddress(true);
+    const addressToSave = {
+      ...newAddress,
+      country: selectedProvince,
+      locality: selectedDistrict,
+      street: selectedWard,
+      streetNumber: detailAddress
+    };
     try {
       // Use the standard gateway URL
-      await axios.post(`http://localhost:8900/api/accounts/users/${user.id}/addresses`, newAddress);
+      await axios.post(`${API_BASE_URL}/accounts/users/${user.id}/addresses`, addressToSave);
       await refreshUser();
       setShowAddressModal(false);
       setNewAddress({
@@ -70,6 +198,14 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
         country: 'Việt Nam',
         isDefault: false
       });
+      // Reset dropdown states
+      setSelectedProvinceCode('');
+      setSelectedDistrictCode('');
+      setSelectedWardCode('');
+      setSelectedProvince('');
+      setSelectedDistrict('');
+      setSelectedWard('');
+      setDetailAddress('');
     } catch (err) {
       console.error("Failed to add address", err);
       alert("Lỗi khi thêm địa chỉ mới.");
@@ -81,7 +217,7 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
   useEffect(() => {
     const fetchPromos = async () => {
       try {
-        const res = await axios.get('http://localhost:8900/api/catalog/promotions');
+        const res = await axios.get(`${API_BASE_URL}/catalog/promotions`);
         const data = Array.isArray(res.data) ? res.data : [];
         const normalized = data.map((p: any) => ({
           ...p,
@@ -164,12 +300,18 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
     if (loading) return;
     setLoading(true);
 
+    if (!selectedAddress || !selectedAddress.recipientName || !selectedAddress.phoneNumber) {
+      alert("Vui lòng chọn hoặc thêm địa chỉ nhận hàng trước khi thanh toán!");
+      setLoading(false);
+      return;
+    }
+
     // Rule 5: Check Flash Sale again at checkout
     for (const item of items) {
       if (item.flashSaleItemId) {
         try {
           // Reserve flash sale stock/validate limit
-          await axios.post(`http://localhost:8900/api/catalog/flash-sales/purchase/${item.flashSaleItemId}`, null, {
+          await axios.post(`${API_BASE_URL}/catalog/flash-sales/purchase/${item.flashSaleItemId}`, null, {
             params: { userId: user.userName, quantity: item.quantity }
           });
         } catch (err: any) {
@@ -220,9 +362,9 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
         userName: user.userName 
       },
       paymentMethod: paymentMethod,
-      shippingRecipientName: selectedAddress?.recipientName,
-      shippingPhoneNumber: selectedAddress?.phoneNumber,
-      shippingAddress: `${selectedAddress?.streetNumber} ${selectedAddress?.street}, ${selectedAddress?.locality}, ${selectedAddress?.country}`
+      shippingRecipientName: selectedAddress.recipientName,
+      shippingPhoneNumber: selectedAddress.phoneNumber,
+      shippingAddress: formatAddress(selectedAddress)
     };
 
     try {
@@ -316,18 +458,18 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
 
             {selectedAddress ? (
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="p-5 bg-neutral-50 rounded-2xl border border-neutral-100">
-                  <p className="text-[8px] uppercase font-bold text-neutral-400 mb-1 tracking-widest">Người nhận</p>
-                  <p className="font-bold text-base leading-none">{selectedAddress.recipientName}</p>
+                <div className="p-6 bg-neutral-50 rounded-2xl border border-neutral-100">
+                  <p className="text-[8px] uppercase font-bold text-neutral-400 mb-2 tracking-widest">Người nhận</p>
+                  <p className="font-bold text-base leading-normal">{selectedAddress.recipientName}</p>
                 </div>
-                <div className="p-5 bg-neutral-50 rounded-2xl border border-neutral-100">
-                  <p className="text-[8px] uppercase font-bold text-neutral-400 mb-1 tracking-widest">Số điện thoại</p>
-                  <p className="font-bold text-base leading-none">{selectedAddress.phoneNumber}</p>
+                <div className="p-6 bg-neutral-50 rounded-2xl border border-neutral-100">
+                  <p className="text-[8px] uppercase font-bold text-neutral-400 mb-2 tracking-widest">Số điện thoại</p>
+                  <p className="font-bold text-base leading-normal">{selectedAddress.phoneNumber}</p>
                 </div>
-                <div className="md:col-span-2 p-5 bg-neutral-50 rounded-2xl border border-neutral-100">
-                  <p className="text-[8px] uppercase font-bold text-neutral-400 mb-1 tracking-widest">Địa chỉ chi tiết</p>
+                <div className="md:col-span-2 p-6 bg-neutral-50 rounded-2xl border border-neutral-100">
+                  <p className="text-[8px] uppercase font-bold text-neutral-400 mb-2 tracking-widest">Địa chỉ chi tiết</p>
                   <p className="font-bold text-base leading-relaxed">
-                    {selectedAddress.streetNumber} {selectedAddress.street}, {selectedAddress.locality}, {selectedAddress.country}
+                    {formatAddress(selectedAddress)}
                   </p>
                 </div>
               </div>
@@ -355,7 +497,7 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
             </div>
             <div className="grid gap-4">
               {[
-                { id: 'VNPAY', img: 'https://sandbox.vnpayment.vn/paymentv2/Images/design/logo_vnpay.png', title: 'Thanh toán VNPay', desc: 'QR-Code, Ví điện tử hoặc App Ngân hàng (Khuyên dùng)' },
+                { id: 'VNPAY', icon: QrCode, title: 'Thanh toán VNPay', desc: 'QR-Code, Ví điện tử hoặc App Ngân hàng (Khuyên dùng)' },
                 { id: 'COD', icon: Truck, title: 'Thanh toán khi nhận hàng', desc: 'Trả tiền mặt trực tiếp khi nhận và kiểm tra hàng' },
                 { id: 'CARD', icon: CreditCard, title: 'Thẻ Quốc tế / ATM', desc: 'Thanh toán qua Visa, Mastercard hoặc Thẻ nội địa' }
               ].map(method => (
@@ -364,25 +506,19 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
                   onClick={() => setPaymentMethod(method.id)}
                   className={`relative flex items-center justify-between p-6 rounded-2xl border-2 cursor-pointer transition-all duration-500 ${
                     paymentMethod === method.id 
-                    ? 'border-black bg-neutral-900 text-white shadow-2xl scale-[1.02]' 
+                    ? 'border-black bg-selected-payment shadow-2xl scale-[1.02]' 
                     : 'border-neutral-100 bg-white hover:border-neutral-300'
                   }`}
                 >
                   <div className="flex items-center gap-5">
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center transition-colors ${
-                      paymentMethod === method.id ? 'bg-white' : 'bg-neutral-50'
-                    }`}>
-                      {method.img ? (
-                        <img src={method.img} className="w-10 object-contain" alt="" />
-                      ) : (
-                        method.icon && <method.icon className={`w-6 h-6 ${paymentMethod === method.id ? 'text-black' : 'text-neutral-300'}`} />
-                      )}
+                    <div className="w-14 h-14 rounded-xl flex-shrink-0 flex items-center justify-center transition-colors bg-neutral-50">
+                      <method.icon className={`w-6 h-6 ${paymentMethod === method.id ? 'text-black' : 'text-neutral-300'}`} />
                     </div>
                     <div>
-                      <p className={`font-bold text-lg tracking-tight ${paymentMethod === method.id ? 'text-white' : 'text-black'}`}>
+                      <p className="font-bold text-lg tracking-tight text-black">
                         {method.title}
                       </p>
-                      <p className={`text-[11px] font-medium opacity-60 ${paymentMethod === method.id ? 'text-neutral-400' : 'text-neutral-500'}`}>
+                      <p className="text-[11px] font-medium opacity-60 text-neutral-500">
                         {method.desc}
                       </p>
                     </div>
@@ -393,12 +529,6 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
                   }`}>
                     {paymentMethod === method.id && <CheckCircle2 size={14} className="text-black" />}
                   </div>
-
-                  {method.id === 'VNPAY' && (
-                    <div className="absolute -top-3 -right-3 bg-red-600 text-white text-[8px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
-                      Phổ biến
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -411,13 +541,13 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
             <h3 className="text-xl font-bold mb-6 tracking-tight">Tóm tắt đơn hàng</h3>
             <div className="space-y-4 mb-8 max-h-[30vh] overflow-y-auto pr-2 no-scrollbar">
               {items.map((i, idx) => (
-                <div key={idx} className="flex gap-4 items-center group">
-                  <div className="w-14 h-14 bg-neutral-50 rounded-xl overflow-hidden flex-shrink-0 border border-neutral-100">
-                    <img src={i.product.image ? `http://localhost:8900/api/catalog/products/images/${i.product.image}` : '/hero.png'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="" />
+                <div key={idx} className="flex gap-6 items-start py-4 border-b border-neutral-100 last:border-b-0 group">
+                  <div className="w-32 h-40 bg-neutral-50 rounded-xl overflow-hidden flex-shrink-0 border border-neutral-100">
+                    <img src={i.product.image ? `${API_BASE_URL}/catalog/products/images/${i.product.image}` : '/hero.png'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-[13px] font-bold leading-tight mb-1 line-clamp-1">{i.product.productName}</p>
-                    <div className="flex gap-2 text-[9px] font-bold uppercase tracking-widest text-neutral-400 mb-1">
+                  <div className="flex-1 py-2">
+                    <p className="text-[13px] font-bold leading-tight mb-2 line-clamp-2">{i.product.productName}</p>
+                    <div className="flex gap-2 text-[9px] font-bold uppercase tracking-widest text-neutral-400 mb-2">
                       <span>SL: {i.quantity}</span>
                       {i.selectedSize && <span>• Size: {i.selectedSize}</span>}
                       {i.selectedColor && <span>• Màu: {i.selectedColor}</span>}
@@ -457,17 +587,17 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
                         <div className="absolute right-4 top-[-28px] pointer-events-none opacity-30">↓</div>
                       </div>
                       
-                      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-dashed border-neutral-200">
+                      <div className="flex items-center gap-3 mt-4 pt-4 border-t border-dashed border-neutral-200">
                         <input 
                           type="text" 
                           placeholder="Hoặc nhập mã khác..." 
-                          className="flex-1 bg-transparent border-none text-[10px] font-bold uppercase tracking-widest outline-none"
+                          className="flex-1 bg-white border border-neutral-200 rounded-xl px-4 py-3 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-black transition-all"
                           value={couponCode}
                           onChange={e => setCouponCode(e.target.value)}
                         />
                         <button 
                           onClick={handleApplyCoupon}
-                          className="text-[9px] font-bold uppercase tracking-widest hover:underline"
+                          className="bg-black text-white px-6 py-3 rounded-xl text-[9px] font-bold uppercase tracking-widest hover:bg-[var(--primary)] active:scale-95 transition-all"
                         >
                           Áp dụng
                         </button>
@@ -594,7 +724,7 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
                               )}
                             </div>
                             <p className="text-sm text-neutral-600 leading-relaxed">
-                              {addr.streetNumber} {addr.street}, {addr.locality}, {addr.country}
+                              {formatAddress(addr)}
                             </p>
                           </div>
                           {selectedAddress?.id === addr.id && <CheckCircle2 className="text-black w-6 h-6" />}
@@ -614,7 +744,7 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
                     <input 
                       type="text" 
                       placeholder="Ví dụ: Nguyễn Văn A"
-                      className="w-full bg-white border border-neutral-200 rounded-2xl px-5 py-4 text-sm font-medium focus:border-black outline-none transition-all"
+                      className="w-full bg-white border border-neutral-200 rounded-2xl px-6 py-5 text-sm font-medium focus:border-black outline-none transition-all"
                       value={newAddress.recipientName}
                       onChange={e => setNewAddress({...newAddress, recipientName: e.target.value})}
                     />
@@ -624,49 +754,60 @@ const Checkout: React.FC<CheckoutProps> = ({ user, items, total, onBack, onConfi
                     <input 
                       type="text" 
                       placeholder="0xxxxxxxxx"
-                      className="w-full bg-white border border-neutral-200 rounded-2xl px-5 py-4 text-sm font-medium focus:border-black outline-none transition-all"
+                      className="w-full bg-white border border-neutral-200 rounded-2xl px-6 py-5 text-sm font-medium focus:border-black outline-none transition-all"
                       value={newAddress.phoneNumber}
                       onChange={e => setNewAddress({...newAddress, phoneNumber: e.target.value})}
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] font-bold uppercase tracking-widest ml-1">Số nhà</label>
-                    <input 
-                      type="text" 
-                      placeholder="Ví dụ: 123"
-                      className="w-full bg-white border border-neutral-200 rounded-2xl px-5 py-4 text-sm font-medium focus:border-black outline-none transition-all"
-                      value={newAddress.streetNumber}
-                      onChange={e => setNewAddress({...newAddress, streetNumber: e.target.value})}
-                    />
+                    <label className="text-[9px] font-bold uppercase tracking-widest ml-1">Tỉnh/Thành phố *</label>
+                    <select
+                      className="w-full bg-white border border-neutral-200 rounded-2xl px-6 py-5 text-sm font-medium focus:border-black outline-none transition-all cursor-pointer"
+                      value={selectedProvinceCode}
+                      onChange={handleProvinceChange}
+                    >
+                      <option value="">-- Chọn Tỉnh/Thành phố --</option>
+                      {provinces.map(p => (
+                        <option key={p.code} value={p.code}>{p.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] font-bold uppercase tracking-widest ml-1">Tên đường *</label>
-                    <input 
-                      type="text" 
-                      placeholder="Ví dụ: Đường Lê Lợi"
-                      className="w-full bg-white border border-neutral-200 rounded-2xl px-5 py-4 text-sm font-medium focus:border-black outline-none transition-all"
-                      value={newAddress.street}
-                      onChange={e => setNewAddress({...newAddress, street: e.target.value})}
-                    />
+                    <label className="text-[9px] font-bold uppercase tracking-widest ml-1">Quận/Huyện *</label>
+                    <select
+                      className="w-full bg-white border border-neutral-200 rounded-2xl px-6 py-5 text-sm font-medium focus:border-black outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      value={selectedDistrictCode}
+                      onChange={handleDistrictChange}
+                      disabled={!selectedProvinceCode}
+                    >
+                      <option value="">-- Chọn Quận/Huyện --</option>
+                      {districts.map(d => (
+                        <option key={d.code} value={d.code}>{d.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] font-bold uppercase tracking-widest ml-1">Phường/Xã, Quận/Huyện *</label>
-                    <input 
-                      type="text" 
-                      placeholder="Ví dụ: P. Bến Nghé, Quận 1"
-                      className="w-full bg-white border border-neutral-200 rounded-2xl px-5 py-4 text-sm font-medium focus:border-black outline-none transition-all"
-                      value={newAddress.locality}
-                      onChange={e => setNewAddress({...newAddress, locality: e.target.value})}
-                    />
+                    <label className="text-[9px] font-bold uppercase tracking-widest ml-1">Phường/Xã *</label>
+                    <select
+                      className="w-full bg-white border border-neutral-200 rounded-2xl px-6 py-5 text-sm font-medium focus:border-black outline-none transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      value={selectedWardCode}
+                      onChange={handleWardChange}
+                      disabled={!selectedDistrictCode}
+                    >
+                      <option value="">-- Chọn Phường/Xã --</option>
+                      {wards.map(w => (
+                        <option key={w.code} value={w.code}>{w.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] font-bold uppercase tracking-widest ml-1">Thành phố/Tỉnh *</label>
+                    <label className="text-[9px] font-bold uppercase tracking-widest ml-1">Địa chỉ chi tiết *</label>
                     <input 
                       type="text" 
-                      placeholder="Ví dụ: TP. Hồ Chí Minh"
-                      className="w-full bg-white border border-neutral-200 rounded-2xl px-5 py-4 text-sm font-medium focus:border-black outline-none transition-all"
-                      value={newAddress.country}
-                      onChange={e => setNewAddress({...newAddress, country: e.target.value})}
+                      placeholder="Số nhà, tên đường, căn hộ..."
+                      className="w-full bg-white border border-neutral-200 rounded-2xl px-6 py-5 text-sm font-medium focus:border-black outline-none transition-all"
+                      value={detailAddress}
+                      onChange={e => setDetailAddress(e.target.value)}
                     />
                   </div>
                 </div>

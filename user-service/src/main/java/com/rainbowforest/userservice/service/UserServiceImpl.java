@@ -71,43 +71,45 @@ public class UserServiceImpl implements UserService {
         }
         if (user.getUserDetails() != null && user.getUserDetails().getEmail() != null) {
             if (userDetailsRepository.findByEmail(user.getUserDetails().getEmail()) != null) {
-                throw new RuntimeException("Email '" + user.getUserDetails().getEmail() + "' đã được sử dụng bởi tài khoản khác.");
+                throw new RuntimeException(
+                        "Email '" + user.getUserDetails().getEmail() + "' đã được sử dụng bởi tài khoản khác.");
             }
         }
 
         user.setActive(1);
-        
+
         // Hash password before saving
         if (user.getUserPassword() != null) {
             user.setUserPassword(passwordEncoder.encode(user.getUserPassword()));
         }
-        
+
         // Thiết lập mối liên kết 2 chiều giữa User và UserDetails
         if (user.getUserDetails() != null) {
             user.getUserDetails().setUser(user);
         }
-        
+
         UserRole finalRole = null;
-        
+
         // 1. Ưu tiên tìm Role theo ID
         if (user.getRole() != null && user.getRole().getId() != null) {
             finalRole = userRoleRepository.findById(user.getRole().getId()).orElse(null);
         }
-        
+
         // 2. Tìm theo tên (Case-insensitive fallback)
         if (finalRole == null) {
-            String roleToFind = (user.getRole() != null && user.getRole().getRoleName() != null) 
-                                ? user.getRole().getRoleName() : "CUSTOMER";
+            String roleToFind = (user.getRole() != null && user.getRole().getRoleName() != null)
+                    ? user.getRole().getRoleName()
+                    : "CUSTOMER";
             finalRole = userRoleRepository.findUserRoleByRoleName(roleToFind.toUpperCase());
         }
-        
+
         // 3. Tạo mới nếu hoàn toàn không thấy
         if (finalRole == null) {
             finalRole = new UserRole();
             finalRole.setRoleName("CUSTOMER");
             finalRole = userRoleRepository.save(finalRole);
         }
-        
+
         user.setRole(finalRole);
         return userRepository.save(user);
     }
@@ -118,7 +120,7 @@ public class UserServiceImpl implements UserService {
         User existingUser = userRepository.findById(id).orElse(null);
         if (existingUser != null) {
             existingUser.setUserName(user.getUserName());
-            
+
             // Cập nhật Quyền (Role) nếu có
             if (user.getRole() != null) {
                 UserRole role = null;
@@ -127,7 +129,8 @@ public class UserServiceImpl implements UserService {
                 } else if (user.getRole().getRoleName() != null) {
                     role = userRoleRepository.findUserRoleByRoleName(user.getRole().getRoleName());
                 }
-                if (role != null) existingUser.setRole(role);
+                if (role != null)
+                    existingUser.setRole(role);
             }
 
             // Cập nhật Details (bao gồm Avatar)
@@ -147,11 +150,12 @@ public class UserServiceImpl implements UserService {
                 details.setLocality(user.getUserDetails().getLocality());
                 details.setAvatar(user.getUserDetails().getAvatar());
             }
-            
+
             return userRepository.save(existingUser);
         }
         return null;
     }
+
     @Override
     @Transactional
     public Address addAddress(Long userId, Address address) {
@@ -164,14 +168,14 @@ public class UserServiceImpl implements UserService {
                 details.setUser(user);
                 userDetailsRepository.save(details);
             }
-            
+
             if (address.isDefault()) {
                 // Reset other default addresses
                 details.getAddresses().forEach(a -> a.setDefault(false));
             } else if (details.getAddresses().isEmpty()) {
                 address.setDefault(true);
             }
-            
+
             address.setUserDetails(details);
             details.getAddresses().add(address);
             userDetailsRepository.save(details);
@@ -193,27 +197,27 @@ public class UserServiceImpl implements UserService {
         if (details == null || details.getUser() == null) {
             return null;
         }
-        
+
         User user = details.getUser();
-        
+
         // Generate 6-digit OTP
         String token = String.format("%06d", new java.util.Random().nextInt(1000000));
-        
-        // Find existing token by userId or create a new one to avoid unique constraint violations
-        PasswordResetToken myToken = 
-            passwordResetTokenRepository.findByUserId(user.getId())
+
+        // Find existing token by userId or create a new one to avoid unique constraint
+        // violations
+        PasswordResetToken myToken = passwordResetTokenRepository.findByUserId(user.getId())
                 .orElseGet(() -> {
                     PasswordResetToken newToken = new PasswordResetToken();
                     newToken.setUser(user);
                     return newToken;
                 });
-        
+
         myToken.setToken(token);
         myToken.setExpiryDate(java.time.LocalDateTime.now().plusMinutes(15));
         myToken.setUsed(false);
-        
+
         passwordResetTokenRepository.saveAndFlush(myToken);
-        
+
         return token;
     }
 
@@ -226,15 +230,33 @@ public class UserServiceImpl implements UserService {
             if (resetToken.isUsed() || resetToken.getExpiryDate().isBefore(java.time.LocalDateTime.now())) {
                 return false;
             }
-            
+
             User user = resetToken.getUser();
             user.setUserPassword(passwordEncoder.encode(newPassword));
             userRepository.save(user);
-            
+
             resetToken.setUsed(true);
             passwordResetTokenRepository.save(resetToken);
             return true;
         }
         return false;
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(Long id, String currentPassword, String newPassword) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Người dùng không tồn tại."));
+                
+        if (!passwordEncoder.matches(currentPassword, user.getUserPassword())) {
+            throw new IllegalArgumentException("Mật khẩu hiện tại không chính xác.");
+        }
+        
+        if (passwordEncoder.matches(newPassword, user.getUserPassword())) {
+            throw new IllegalArgumentException("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
+        }
+        
+        user.setUserPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 }

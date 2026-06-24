@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, X, Send, Minus, ShoppingBag, Clock, User } from 'lucide-react';
+import { MessageSquare, X, Minus, ShoppingBag, Clock, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
@@ -94,7 +94,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
     }
   };
 
-  const connect = (convId: number) => {
+  const connect = (_convId: number) => {
     const socket = new SockJS(ENDPOINTS.chatWS);
     stompClient.current = new Client({
       webSocketFactory: () => socket,
@@ -159,7 +159,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="mb-6 w-[400px] h-[600px] bg-[#0c0e14]/95 backdrop-blur-2xl rounded-[2.5rem] shadow-[0_30px_100px_rgba(0,0,0,0.5)] overflow-hidden border border-white/10 flex flex-col text-white"
+            className="mb-6 w-[400px] h-[600px] bg-[#0c0e14]/95 backdrop-blur-2xl rounded-[2.5rem] shadow-chat-popup overflow-hidden border border-white/10 flex flex-col text-white"
           >
             {/* Header */}
             <div className="p-7 border-b border-white/10 flex justify-between items-center bg-white/5">
@@ -182,7 +182,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
                   onClick={() => {
                     if (connected) {
                       const msg: Message = {
-                        conversationId: conversationId!,
+                        conversationId: conversation?.id,
                         senderId: user.id,
                         senderName: user.userName,
                         content: "🆘 [YÊU CẦU GẶP NHÂN VIÊN TƯ VẤN TRỰC TIẾP]",
@@ -250,7 +250,7 @@ const ChatWidget: React.FC<ChatWidgetProps> = ({ user }) => {
                               <ShoppingBag size={14} />
                               <span className="text-[10px] font-bold uppercase tracking-widest">Sản phẩm quan tâm</span>
                             </div>
-                            <img src={`http://localhost:8900/api/catalog/products/images/${msg.productImage}`} className="w-full h-40 object-cover rounded-xl shadow-lg" alt="" />
+                            <img src={`${import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8900/api'}/catalog/products/images/${msg.productImage}`} className="w-full h-40 object-cover rounded-xl shadow-lg" alt="" />
                             <p className="font-bold text-xs">{msg.productName}</p>
                             <button className={`w-full py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all ${
                                 isMe ? 'bg-black text-white' : 'bg-white text-black'

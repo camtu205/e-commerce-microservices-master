@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
-import { Plus, Search, CheckCircle2, X, ChevronLeft, ChevronRight, ArrowRight, Camera } from 'lucide-react';
+import { Plus, CheckCircle2, X, ChevronLeft, ChevronRight, ArrowRight, Camera } from 'lucide-react';
 import { ENDPOINTS } from './api';
-import type { Order, Product, CartItem } from './api';
+import type { Product, CartItem } from './api';
 import ChatWidget from './ChatWidget';
 import Login from './Login';
 import Register from './Register';
@@ -17,7 +17,7 @@ import OrderDetailPage from './OrderDetailPage';
 import Footer from './Footer';
 import ForgotPassword from './ForgotPassword';
 
-const API_BASE_URL = 'http://localhost:8900/api';
+const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8900/api';
 
 const getAvatarUrl = (avatar: string | undefined, userName: string) => {
   if (!avatar) return `https://ui-avatars.com/api/?name=${userName}&background=random`;
@@ -32,6 +32,59 @@ const ProfileComponent = ({ user, setUser, navigate, setToast }: any) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [tiers, setTiers] = useState<any[]>([]);
   const [nextTier, setNextTier] = useState<any>(null);
+
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const handleChangePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError("Mật khẩu mới phải từ 6 ký tự trở lên.");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("Mật khẩu mới và mật khẩu xác nhận không trùng khớp.");
+      return;
+    }
+
+    if (passwordForm.currentPassword === passwordForm.newPassword) {
+      setPasswordError("Mật khẩu mới không được trùng với mật khẩu hiện tại.");
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      await axios.put(ENDPOINTS.changePassword(user.id), {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      setToast("Đổi mật khẩu thành công!");
+      setIsChangingPassword(false);
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (err: any) {
+      const errorData = err.response?.data;
+      setPasswordError(
+        typeof errorData === 'string'
+          ? errorData
+          : (errorData?.error || errorData?.message || "Lỗi khi đổi mật khẩu.")
+      );
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchMembershipData = async () => {
@@ -98,7 +151,6 @@ const ProfileComponent = ({ user, setUser, navigate, setToast }: any) => {
 
   const totalSpending = user?.userDetails?.totalSpending || 0;
   const progress = nextTier ? Math.min(100, (totalSpending / nextTier.minSpending) * 100) : 100;
-  const remaining = nextTier ? Math.max(0, nextTier.minSpending - totalSpending) : 0;
 
   if (!user) return <Navigate to="/login" />;
 
@@ -127,21 +179,81 @@ const ProfileComponent = ({ user, setUser, navigate, setToast }: any) => {
               <div className="grid grid-cols-2 gap-8">
                 <div>
                   <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block">Họ</label>
-                  <input type="text" className="lv-input" value={editForm.userDetails?.firstName} onChange={e => setEditForm({...editForm, userDetails: {...editForm.userDetails, firstName: e.target.value}})} />
+                  <input type="text" className="lv-input" value={editForm.userDetails?.firstName} onChange={e => setEditForm({ ...editForm, userDetails: { ...editForm.userDetails, firstName: e.target.value } })} />
                 </div>
                 <div>
                   <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block">Tên</label>
-                  <input type="text" className="lv-input" value={editForm.userDetails?.lastName} onChange={e => setEditForm({...editForm, userDetails: {...editForm.userDetails, lastName: e.target.value}})} />
+                  <input type="text" className="lv-input" value={editForm.userDetails?.lastName} onChange={e => setEditForm({ ...editForm, userDetails: { ...editForm.userDetails, lastName: e.target.value } })} />
                 </div>
                 <div className="col-span-2">
                   <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block">Số điện thoại</label>
-                  <input type="text" className="lv-input" value={editForm.userDetails?.phoneNumber} onChange={e => setEditForm({...editForm, userDetails: {...editForm.userDetails, phoneNumber: e.target.value}})} />
+                  <input type="text" className="lv-input" value={editForm.userDetails?.phoneNumber} onChange={e => setEditForm({ ...editForm, userDetails: { ...editForm.userDetails, phoneNumber: e.target.value } })} />
                 </div>
               </div>
               <div className="flex gap-4 pt-12">
                 <button type="button" onClick={() => setIsEditing(false)} className="luxury-btn luxury-btn-outline flex-1 py-3 text-[10px]">Hủy bỏ</button>
                 <button type="submit" className="luxury-btn flex-1 py-3 text-[10px]">Lưu thông tin</button>
               </div>
+            </div>
+          </form>
+        ) : isChangingPassword ? (
+          <form onSubmit={handleChangePasswordSubmit} className="max-w-md mx-auto space-y-6 fade-in border border-neutral-100 p-8 bg-white rounded-2xl shadow-sm">
+            <h3 className="text-2xl font-serif mb-6 text-center">Đổi mật khẩu tài khoản</h3>
+            {passwordError && (
+              <div className="p-4 bg-red-50 text-red-600 text-xs font-medium border border-red-100 mb-6">
+                {passwordError}
+              </div>
+            )}
+            <div>
+              <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block">Mật khẩu hiện tại</label>
+              <input
+                type="password"
+                className="lv-input"
+                value={passwordForm.currentPassword}
+                onChange={e => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block">Mật khẩu mới</label>
+              <input
+                type="password"
+                className="lv-input"
+                value={passwordForm.newPassword}
+                onChange={e => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                required
+              />
+            </div>
+            <div>
+              <label className="text-[10px] uppercase tracking-widest font-bold mb-2 block">Xác nhận mật khẩu mới</label>
+              <input
+                type="password"
+                className="lv-input"
+                value={passwordForm.confirmPassword}
+                onChange={e => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                required
+              />
+            </div>
+            <div className="flex gap-4 pt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsChangingPassword(false);
+                  setPasswordError('');
+                  setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                }}
+                className="luxury-btn luxury-btn-outline flex-1 py-3 text-[10px]"
+                disabled={passwordLoading}
+              >
+                Hủy bỏ
+              </button>
+              <button
+                type="submit"
+                className="luxury-btn flex-1 py-3 text-[10px] justify-center font-bold"
+                disabled={passwordLoading}
+              >
+                {passwordLoading ? "Đang xử lý..." : "Cập nhật mật khẩu"}
+              </button>
             </div>
           </form>
         ) : (
@@ -195,13 +307,13 @@ const ProfileComponent = ({ user, setUser, navigate, setToast }: any) => {
 
                 return (
                   <div className="w-full max-w-md">
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      style={{ 
-                        background: config.bg, 
-                        minHeight: '260px', 
-                        borderRadius: '40px', 
+                      style={{
+                        background: config.bg,
+                        minHeight: '260px',
+                        borderRadius: '40px',
                         overflow: 'hidden',
                         position: 'relative',
                         color: 'white',
@@ -210,7 +322,7 @@ const ProfileComponent = ({ user, setUser, navigate, setToast }: any) => {
                     >
                       {/* Decorative Gloss */}
                       <div style={{ position: 'absolute', top: 0, right: 0, width: '200px', height: '200px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '50%', filter: 'blur(40px)', transform: 'translate(40%, -40%)' }} />
-                      
+
                       <div style={{ padding: '40px', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', position: 'relative', zIndex: 10 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
@@ -238,10 +350,10 @@ const ProfileComponent = ({ user, setUser, navigate, setToast }: any) => {
                             </div>
                             {nextTier && (
                               <div style={{ width: '100%', height: '6px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '10px', overflow: 'hidden' }}>
-                                <motion.div 
-                                  initial={{ width: 0 }} 
-                                  animate={{ width: `${progress}%` }} 
-                                  transition={{ duration: 1.5, ease: "easeOut" }} 
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${progress}%` }}
+                                  transition={{ duration: 1.5, ease: "easeOut" }}
                                   style={{ height: '100%', backgroundColor: config.accent, boxShadow: `0 0 10px ${config.accent}80` }}
                                 />
                               </div>
@@ -292,6 +404,10 @@ const ProfileComponent = ({ user, setUser, navigate, setToast }: any) => {
                     <div><p className="text-xs font-bold mb-0.5">Chỉnh sửa thông tin</p><p className="text-[10px] opacity-40">Cập nhật tên, số điện thoại, ảnh đại diện</p></div>
                     <ArrowRight size={16} />
                   </button>
+                  <button onClick={() => setIsChangingPassword(true)} className="flex items-center justify-between p-4 bg-white border border-neutral-100 rounded-xl hover:border-black transition-all text-left">
+                    <div><p className="text-xs font-bold mb-0.5">Đổi mật khẩu</p><p className="text-[10px] opacity-40">Cập nhật mật khẩu mới cho tài khoản</p></div>
+                    <ArrowRight size={16} />
+                  </button>
                   <button onClick={() => { localStorage.removeItem('user'); setUser(null); navigate('/'); }} className="flex items-center justify-between p-4 bg-red-50/50 border border-red-100 rounded-xl hover:bg-red-50 transition-all text-left">
                     <div><p className="text-xs font-bold text-red-600 mb-0.5">Đăng xuất</p><p className="text-[10px] text-red-600 opacity-40">Kết thúc phiên làm việc hiện tại</p></div>
                     <ArrowRight size={16} className="text-red-600" />
@@ -312,7 +428,7 @@ const FlashSaleItemComponent = ({ item, navigate, getImgUrl }: any) => {
   const isSoldOut = item.availableQuantity <= 0;
 
   return (
-    <div 
+    <div
       className={`group relative bg-white border border-neutral-100 overflow-hidden hover:shadow-lg transition-all duration-500 cursor-pointer flex flex-col h-full ${isSoldOut ? 'opacity-70' : ''}`}
       onClick={() => navigate(`/product/${item.product.id}?flashSaleItemId=${item.id}`)}
     >
@@ -335,15 +451,15 @@ const FlashSaleItemComponent = ({ item, navigate, getImgUrl }: any) => {
           <span className="text-rose-600 font-bold text-sm">{Number(item.flashPrice).toLocaleString()} ₫</span>
           <span className="text-neutral-400 text-[10px] line-through">{Number(item.product.price).toLocaleString()} ₫</span>
         </div>
-        
+
         <div className="mt-auto space-y-1.5">
           <div className="flex justify-between text-[8px] uppercase tracking-tighter">
             <span className="opacity-50">Đã bán {item.initialQuantity - item.availableQuantity}</span>
             <span className="font-bold">{Math.round(progress)}%</span>
           </div>
           <div className="h-1 w-full bg-neutral-100 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-rose-600 transition-all duration-1000" 
+            <div
+              className="h-full bg-rose-600 transition-all duration-1000"
               style={{ width: `${progress}%` }}
             />
           </div>
@@ -355,7 +471,7 @@ const FlashSaleItemComponent = ({ item, navigate, getImgUrl }: any) => {
 
 const FlashSaleSection = ({ flashSales, navigate, getImgUrl, onRefresh }: any) => {
   const activeSale = flashSales.find((fs: any) => fs.status === 'Active' || fs.status === 'Upcoming');
-  
+
   useEffect(() => {
     if (activeSale && activeSale.status === 'Upcoming') {
       const timeToStart = new Date(activeSale.startTime).getTime() - new Date().getTime();
@@ -378,9 +494,9 @@ const FlashSaleSection = ({ flashSales, navigate, getImgUrl, onRefresh }: any) =
           </div>
           <h2 className="text-4xl font-serif">{activeSale.title}</h2>
         </div>
-        <CountdownTimer 
-          targetDate={activeSale.status === 'Upcoming' ? activeSale.startTime : activeSale.endTime} 
-          status={activeSale.status} 
+        <CountdownTimer
+          targetDate={activeSale.status === 'Upcoming' ? activeSale.startTime : activeSale.endTime}
+          status={activeSale.status}
         />
       </div>
 
@@ -394,7 +510,7 @@ const FlashSaleSection = ({ flashSales, navigate, getImgUrl, onRefresh }: any) =
 };
 
 const CountdownTimer = ({ targetDate, status }: { targetDate: string, status: string }) => {
-  const [timeLeft, setTimeLeft] = useState({h:0, m:0, s:0});
+  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
 
   useEffect(() => {
     const update = () => {
@@ -403,7 +519,7 @@ const CountdownTimer = ({ targetDate, status }: { targetDate: string, status: st
       const diff = target - now;
 
       if (diff <= 0) {
-        setTimeLeft({h:0, m:0, s:0});
+        setTimeLeft({ h: 0, m: 0, s: 0 });
       } else {
         setTimeLeft({
           h: Math.floor(diff / (1000 * 60 * 60)),
@@ -464,7 +580,6 @@ const App = () => {
   const [brands, setBrands] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [paymentStatus, setPaymentStatus] = useState<'success' | 'failed' | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [banners, setBanners] = useState<any[]>([]);
@@ -476,7 +591,6 @@ const App = () => {
   const [activeBanner, setActiveBanner] = useState(0);
   const isSubmittingRef = useRef(false);
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     fetchData();
@@ -539,7 +653,7 @@ const App = () => {
     const responseCode = params.get('vnp_ResponseCode');
     if (responseCode) {
       if (responseCode === '00') {
-        const callbackUrl = `http://localhost:8813/shop/vnpay-callback${window.location.search}`;
+        const callbackUrl = `${API_BASE_URL}/shop/vnpay-callback${window.location.search}`;
         axios.get(callbackUrl)
           .then(() => {
             setPaymentStatus('success');
@@ -590,7 +704,6 @@ const App = () => {
       setCollections(collectionResp.data);
       setStoreInfo(storeResp.data);
     } catch (e) { console.error(e); }
-    finally { setLoading(false); }
   };
 
   useEffect(() => {
@@ -613,15 +726,15 @@ const App = () => {
   const getImgUrl = (img: string | undefined) => {
     if (!img) return "https://images.unsplash.com/photo-1548036627-19fefb0179af?q=80&w=2070&auto=format&fit=crop";
     if (img.startsWith("http")) return img;
-    return `http://localhost:8900/api/catalog/products/images/${img}`;
+    return `${API_BASE_URL}/catalog/products/images/${img}`;
   };
 
   const addToCart = (p: Product, quantity: number = 1, size?: string, color?: string, flashSaleItem?: any) => {
     let targetIndex = -1;
     setCart(prev => {
-      const existingIndex = prev.findIndex(i => 
-        i.product.id === p.id && 
-        i.selectedSize === size && 
+      const existingIndex = prev.findIndex(i =>
+        i.product.id === p.id &&
+        i.selectedSize === size &&
         i.selectedColor === color &&
         i.flashSaleItemId === flashSaleItem?.id
       );
@@ -629,7 +742,7 @@ const App = () => {
       if (existingIndex > -1) {
         const existingItem = prev[existingIndex];
         const newTotalQty = existingItem.quantity + quantity;
-        
+
         const maxQty = flashSaleItem ? flashSaleItem.availableQuantity : p.availability;
         if (newTotalQty > maxQty) {
           alert(`Sản phẩm này chỉ còn ${maxQty} cái.`);
@@ -649,10 +762,10 @@ const App = () => {
       }
 
       targetIndex = prev.length;
-      return [...prev, { 
-        product: p, 
-        quantity, 
-        selectedSize: size, 
+      return [...prev, {
+        product: p,
+        quantity,
+        selectedSize: size,
         selectedColor: color,
         flashSaleItemId: flashSaleItem?.id,
         flashPrice: flashSaleItem?.flashPrice
@@ -709,15 +822,15 @@ const App = () => {
   const handleCheckout = async (payload: any) => {
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
-    
+
     try {
       const res = await axios.post(ENDPOINTS.orders, payload);
       const order = res.data;
-      
+
       // Clear cart items that were selected for this order immediately
       setCart(prev => prev.filter((_, i) => !selectedCartIds.includes(i)));
       setSelectedCartIds([]);
-      
+
       if (payload.paymentMethod === 'VNPAY') {
         const vnpayRes = await axios.get(`${ENDPOINTS.orders}/${order.id}/vnpay-url`);
         if (vnpayRes.data.url) {
@@ -727,7 +840,7 @@ const App = () => {
       }
 
       navigate('/orders');
-    } catch (e) { 
+    } catch (e) {
       throw e;
     } finally {
       isSubmittingRef.current = false;
@@ -746,7 +859,7 @@ const App = () => {
         <AnimatePresence mode="wait">
           {banners.length > 0 ? (
             banners.map((banner, index) => index === activeBanner && (
-              <motion.div 
+              <motion.div
                 key={banner.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -757,15 +870,15 @@ const App = () => {
                 <img src={banner.imageUrl} className="hero-image" alt={banner.title} />
                 <div className="absolute inset-0 bg-black/10" />
                 <div className="hero-content">
-                  <motion.p 
+                  <motion.p
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.5 }}
                     className="text-[10px] uppercase tracking-[0.4em] mb-4 font-bold"
                   >
-                    {banner.subtitle || "CTUS LUX Heritage"}
+                    {banner.subtitle || "CAM TU"}
                   </motion.p>
-                  <motion.h1 
+                  <motion.h1
                     initial={{ y: 30, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.7 }}
@@ -774,7 +887,7 @@ const App = () => {
                     {banner.title || "Vẻ Đẹp Vĩnh Cửu"}
                   </motion.h1>
                   {banner.linkUrl && (
-                    <motion.button 
+                    <motion.button
                       initial={{ y: 20, opacity: 0 }}
                       animate={{ y: 0, opacity: 1 }}
                       transition={{ delay: 0.9 }}
@@ -791,22 +904,22 @@ const App = () => {
             <div className="hero-slide">
               <img src="https://images.unsplash.com/photo-1548036627-19fefb0179af?q=80&w=2070&auto=format&fit=crop" className="hero-image" alt="Default" />
               <div className="hero-content">
-                <p className="text-[10px] uppercase tracking-[0.4em] mb-4 font-bold">CTUS LUX Heritage</p>
+                <p className="text-[10px] uppercase tracking-[0.4em] mb-4 font-bold">CAM TU</p>
                 <h1 className="text-6xl lg:text-8xl font-serif mb-10 leading-tight">Vẻ Đẹp Vĩnh Cửu</h1>
               </div>
             </div>
           )}
         </AnimatePresence>
-        
+
         {banners.length > 1 && (
           <>
-            <button 
+            <button
               onClick={prevBanner}
               className="absolute left-6 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full text-white/20 hover:text-white transition-all duration-700 hidden md:flex"
             >
               <ChevronLeft size={32} strokeWidth={0.5} />
             </button>
-            <button 
+            <button
               onClick={nextBanner}
               className="absolute right-6 top-1/2 -translate-y-1/2 z-30 p-4 rounded-full text-white/20 hover:text-white transition-all duration-700 hidden md:flex"
             >
@@ -815,8 +928,8 @@ const App = () => {
 
             <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex gap-3">
               {banners.map((_, i) => (
-                <button 
-                  key={i} 
+                <button
+                  key={i}
                   onClick={() => setActiveBanner(i)}
                   className={`h-[2px] transition-all duration-500 ${i === activeBanner ? 'w-12 bg-white' : 'w-4 bg-white/30'}`}
                 />
@@ -826,17 +939,17 @@ const App = () => {
         )}
       </section>
 
-      <FlashSaleSection 
-        flashSales={flashSales} 
-        navigate={navigate} 
-        getImgUrl={getImgUrl} 
-        onRefresh={fetchData} 
+      <FlashSaleSection
+        flashSales={flashSales}
+        navigate={navigate}
+        getImgUrl={getImgUrl}
+        onRefresh={fetchData}
       />
 
       {/* Collection Banner Section */}
       {collections.length > 0 && (
         <section className="container py-20">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
@@ -844,15 +957,15 @@ const App = () => {
             className="relative h-[500px] lg:h-[70vh] group overflow-hidden cursor-pointer rounded-xl shadow-2xl"
             onClick={() => navigate('/new-collection')}
           >
-            <img 
-              src={collections[0].bannerUrl} 
-              alt={collections[0].name} 
-              className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110" 
+            <img
+              src={collections[0].bannerUrl}
+              alt={collections[0].name}
+              className="w-full h-full object-cover transition-transform duration-[2000ms] group-hover:scale-110"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent transition-opacity duration-700 group-hover:opacity-80" />
-            
+
             <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-center text-white text-center p-12 pb-20">
-              <motion.span 
+              <motion.span
                 initial={{ y: 20, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 0.8 }}
                 viewport={{ once: true }}
@@ -861,7 +974,7 @@ const App = () => {
               >
                 The New Collection
               </motion.span>
-              <motion.h2 
+              <motion.h2
                 initial={{ y: 30, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true }}
@@ -889,14 +1002,14 @@ const App = () => {
         <div className="text-center mb-16">
           <h2 className="text-3xl font-serif uppercase tracking-widest mb-4">Danh mục gợi ý</h2>
           <div className="flex justify-center gap-8 border-b border-neutral-100 pb-4">
-            <button 
+            <button
               onClick={() => setSelectedCategory(null)}
               className={`nav-link ${!selectedCategory ? 'border-b border-black' : 'opacity-40'}`}
             >
               Tất cả
             </button>
             {categories.map(cat => (
-              <button 
+              <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.name)}
                 className={`nav-link ${selectedCategory === cat.name ? 'border-b border-black' : 'opacity-40'}`}
@@ -909,8 +1022,8 @@ const App = () => {
 
         <div className="product-grid">
           {filteredProducts.map((p) => (
-            <div 
-              key={p.id} 
+            <div
+              key={p.id}
               className="product-card-luxury reveal"
               onClick={() => navigate(`/product/${p.id}`)}
             >
@@ -931,9 +1044,9 @@ const App = () => {
 
   return (
     <div className="min-h-screen">
-      <Header 
-        user={user} 
-        cartCount={cart.length} 
+      <Header
+        user={user}
+        cartCount={cart.length}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         categories={categories}
@@ -943,7 +1056,7 @@ const App = () => {
         onMarkAsRead={handleMarkAsRead}
         onMarkAllRead={handleMarkAllRead}
       />
-      
+
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -952,7 +1065,7 @@ const App = () => {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/cart" element={
             <div className="pt-header">
-              <CartPage 
+              <CartPage
                 cart={cart}
                 selectedCartIds={selectedCartIds}
                 onUpdateQuantity={updateQuantity}
@@ -967,7 +1080,7 @@ const App = () => {
           <Route path="/checkout" element={
             user ? (
               <div className="pt-header">
-                <Checkout 
+                <Checkout
                   user={user}
                   items={selectedItems}
                   total={totalPrice}
@@ -995,13 +1108,12 @@ const App = () => {
           <Route path="/profile" element={<ProfileComponent user={user} setUser={setUser} navigate={navigate} setToast={setToast} />} />
           <Route path="/product/:id" element={
             <div className="pt-header">
-              <ProductDetailComponent 
-                products={products} 
-                cartCount={cart.length} 
-                getImgUrl={getImgUrl} 
+              <ProductDetailComponent
+                products={products}
+                cartCount={cart.length}
+                getImgUrl={getImgUrl}
                 addToCart={addToCart}
                 user={user}
-                setSelectedCartIds={setSelectedCartIds}
                 flashSales={flashSales}
               />
             </div>
@@ -1013,12 +1125,12 @@ const App = () => {
       </main>
 
       {toast && (
-        <div 
-          style={{ 
-            position: 'fixed', 
-            top: '20px', 
-            left: '50%', 
-            transform: 'translateX(-50%)', 
+        <div
+          style={{
+            position: 'fixed',
+            top: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
             zIndex: 10000,
             backgroundColor: 'black',
             color: 'white',
@@ -1051,8 +1163,8 @@ const App = () => {
                 {paymentStatus === 'success' ? "Thành công" : "Thất bại"}
               </h2>
               <p className="text-sm text-neutral-500 mb-8 leading-relaxed">
-                {paymentStatus === 'success' 
-                  ? "Đơn hàng của bạn đã được ghi nhận." 
+                {paymentStatus === 'success'
+                  ? "Đơn hàng của bạn đã được ghi nhận."
                   : "Giao dịch không thành công. Vui lòng thử lại."}
               </p>
               <button onClick={() => setPaymentStatus(null)} className="luxury-btn w-full">Đã hiểu</button>
@@ -1067,7 +1179,7 @@ const App = () => {
   );
 };
 
-const ProductDetailComponent = ({ products, cartCount, getImgUrl, addToCart, user, setSelectedCartIds, flashSales }: any) => {
+const ProductDetailComponent = ({ products, cartCount, getImgUrl, addToCart, user, flashSales }: any) => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -1075,10 +1187,10 @@ const ProductDetailComponent = ({ products, cartCount, getImgUrl, addToCart, use
 
   const queryParams = new URLSearchParams(location.search);
   const flashSaleItemId = queryParams.get('flashSaleItemId');
-  
+
   let flashSaleItem: any = null;
   if (flashSaleItemId) {
-    flashSales.forEach(fs => {
+    flashSales.forEach((fs: any) => {
       const found = fs.items?.find((i: any) => i.id === Number(flashSaleItemId));
       if (found) {
         flashSaleItem = { ...found, status: fs.status };
@@ -1088,8 +1200,8 @@ const ProductDetailComponent = ({ products, cartCount, getImgUrl, addToCart, use
   if (!product) return <div className="text-center py-40">Sản phẩm không tồn tại</div>;
 
   return (
-    <ProductDetail 
-      product={product} 
+    <ProductDetail
+      product={product}
       cartCount={cartCount}
       onClose={() => navigate('/')}
       onOpenCart={() => navigate('/cart')}
@@ -1097,8 +1209,8 @@ const ProductDetailComponent = ({ products, cartCount, getImgUrl, addToCart, use
       onAddToCart={addToCart}
       flashSaleItem={flashSaleItem}
       user={user}
-      onBuyNow={(p: any, q: number, s?: string, c?: string, fs?: any) => { 
-        addToCart(p, q, s, c, fs); 
+      onBuyNow={(p: any, q: number, s?: string, c?: string, fs?: any) => {
+        addToCart(p, q, s, c, fs);
         if (!user) navigate('/login');
         else navigate('/checkout');
       }}
@@ -1120,13 +1232,13 @@ const NewCollectionPage = ({ collections, getImgUrl }: any) => {
     <div className="pt-header min-h-screen pb-20 bg-white">
       {/* Premium Banner */}
       <section className="relative h-[60vh] lg:h-[75vh] mb-20 overflow-hidden">
-        <motion.img 
+        <motion.img
           initial={{ scale: 1.1 }}
           animate={{ scale: 1 }}
           transition={{ duration: 2, ease: "easeOut" }}
-          src={collection.bannerUrl} 
-          className="w-full h-full object-cover" 
-          alt={collection.name} 
+          src={collection.bannerUrl}
+          className="w-full h-full object-cover"
+          alt={collection.name}
         />
         <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
@@ -1145,7 +1257,7 @@ const NewCollectionPage = ({ collections, getImgUrl }: any) => {
             </div>
           </motion.div>
         </div>
-        
+
         {/* Scroll Indicator */}
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 opacity-50">
           <div className="w-[1px] h-12 bg-gradient-to-b from-white to-transparent" />
@@ -1164,13 +1276,13 @@ const NewCollectionPage = ({ collections, getImgUrl }: any) => {
             </div>
           </div>
           <div className="mt-8 md:mt-0 flex gap-4">
-             {/* Filter buttons could go here */}
+            {/* Filter buttons could go here */}
           </div>
         </div>
 
         <div className="product-grid">
           {collection.products?.map((p: any) => (
-            <motion.div 
+            <motion.div
               key={p.id}
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -1179,10 +1291,10 @@ const NewCollectionPage = ({ collections, getImgUrl }: any) => {
               className="group cursor-pointer"
             >
               <div className="aspect-[4/5] bg-neutral-50 mb-4 overflow-hidden relative">
-                <img 
-                  src={getImgUrl(p.image)} 
-                  alt={p.productName} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                <img
+                  src={getImgUrl(p.image)}
+                  alt={p.productName}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors" />
                 <button className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white text-black text-[9px] font-bold uppercase tracking-widest px-6 py-2 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
@@ -1202,7 +1314,7 @@ const NewCollectionPage = ({ collections, getImgUrl }: any) => {
 const BrandPage = ({ products, getImgUrl, brands }: any) => {
   const { name } = useParams();
   const navigate = useNavigate();
-  
+
   const brand = (brands || []).find((b: any) => b.name === name);
   const filtered = products.filter((p: any) => {
     if (brand && p.brandId === brand.id) return true;
@@ -1213,14 +1325,14 @@ const BrandPage = ({ products, getImgUrl, brands }: any) => {
     <div className="pt-header min-h-screen pb-20 bg-white">
       <section className="container py-20">
         <div className="text-center mb-24">
-          <motion.span 
+          <motion.span
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-[10px] uppercase tracking-[0.5em] font-bold opacity-40 block mb-6"
           >
             Heritage Brands
           </motion.span>
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -1228,19 +1340,19 @@ const BrandPage = ({ products, getImgUrl, brands }: any) => {
           >
             {name}
           </motion.h1>
-          <motion.div 
+          <motion.div
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ delay: 0.5, duration: 1 }}
             className="w-20 h-[1px] bg-black mx-auto mt-10 opacity-20"
           />
         </div>
-        
+
         {filtered.length > 0 ? (
           <div className="product-grid">
             {filtered.map((p: any) => (
-              <div 
-                key={p.id} 
+              <div
+                key={p.id}
                 className="product-card-luxury reveal"
                 onClick={() => navigate(`/product/${p.id}`)}
               >
@@ -1273,14 +1385,14 @@ const CategoryPage = ({ products, getImgUrl }: any) => {
     <div className="pt-header min-h-screen pb-20 bg-white">
       <section className="container py-20">
         <div className="text-center mb-24">
-          <motion.span 
+          <motion.span
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-[10px] uppercase tracking-[0.5em] font-bold opacity-40 block mb-6"
           >
             Maison Collection
           </motion.span>
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -1288,19 +1400,19 @@ const CategoryPage = ({ products, getImgUrl }: any) => {
           >
             {name}
           </motion.h1>
-          <motion.div 
+          <motion.div
             initial={{ scaleX: 0 }}
             animate={{ scaleX: 1 }}
             transition={{ delay: 0.5, duration: 1 }}
             className="w-20 h-[1px] bg-black mx-auto mt-10 opacity-20"
           />
         </div>
-        
+
         {filtered.length > 0 ? (
           <div className="product-grid">
             {filtered.map((p: any) => (
-              <div 
-                key={p.id} 
+              <div
+                key={p.id}
                 className="product-card-luxury reveal"
                 onClick={() => navigate(`/product/${p.id}`)}
               >

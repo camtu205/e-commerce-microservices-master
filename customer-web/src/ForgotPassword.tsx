@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, Mail, Lock, CheckCircle2, ChevronLeft } from 'lucide-react';
 
-const API_BASE_URL = 'http://localhost:8900/api';
+const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8900/api';
 
 const ForgotPassword = () => {
   const [username, setUsername] = useState('');

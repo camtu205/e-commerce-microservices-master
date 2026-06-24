@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { motion } from 'framer-motion';
 import { useNavigate, Link } from 'react-router-dom';
 import { ENDPOINTS } from './api';
 import { ArrowRight, User as UserIcon, Lock } from 'lucide-react';
@@ -93,7 +92,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </div>
 
           <div className="flex justify-end pt-2">
-            <Link to="/forgot-password" size="sm" className="text-[10px] uppercase tracking-widest font-bold opacity-40 hover:opacity-100 transition-opacity">Quên mật khẩu?</Link>
+            <Link to="/forgot-password" className="text-[10px] uppercase tracking-widest font-bold opacity-40 hover:opacity-100 transition-opacity">Quên mật khẩu?</Link>
           </div>
 
           <button 

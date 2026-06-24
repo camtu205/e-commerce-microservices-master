@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, User as UserIcon, Search, Menu as MenuIcon, X, Heart, Bell } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { ShoppingBag, User as UserIcon, Search, Menu as MenuIcon, X, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface HeaderProps {
@@ -19,7 +19,8 @@ interface HeaderProps {
 const getAvatarUrl = (avatar: string | undefined, userName: string) => {
   if (!avatar) return `https://ui-avatars.com/api/?name=${userName}&background=random`;
   if (avatar.startsWith("http") || avatar.startsWith("data:")) return avatar;
-  return `http://localhost:8900/api/accounts/images/${avatar}`;
+  const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8900/api';
+  return `${API_BASE_URL}/accounts/images/${avatar}`;
 };
 
 const Header: React.FC<HeaderProps> = ({ user, cartCount, searchQuery, setSearchQuery, categories, brands, notifications, unreadCount, onMarkAsRead, onMarkAllRead }) => {
@@ -28,6 +29,7 @@ const Header: React.FC<HeaderProps> = ({ user, cartCount, searchQuery, setSearch
   const [isBrandsOpen, setIsBrandsOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isAllNotificationsModalOpen, setIsAllNotificationsModalOpen] = useState(false);
   const location = useLocation();
   const isHome = location.pathname === '/';
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
@@ -95,7 +97,7 @@ const Header: React.FC<HeaderProps> = ({ user, cartCount, searchQuery, setSearch
 
         {/* Center: Logo */}
         <div className="flex justify-center flex-1">
-          <Link to="/" className={`text-xl lg:text-[24px] font-serif tracking-[0.5em] uppercase transition-all hover:opacity-70 no-underline ${textColor}`}>CTUS LUX HERITAGE</Link>
+          <Link to="/" className={`text-xl lg:text-[24px] font-serif tracking-[0.5em] uppercase transition-all hover:opacity-70 no-underline ${textColor}`}>CAM TU</Link>
         </div>
 
         {/* Right: Icons */}
@@ -133,7 +135,18 @@ const Header: React.FC<HeaderProps> = ({ user, cartCount, searchQuery, setSearch
             >
               <Bell className="w-5 h-5" strokeWidth={1.5} />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-black text-white text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center font-bold border border-white">
+                <span 
+                  className="absolute bg-rose-500 text-white text-[8px] rounded-full flex items-center justify-center font-bold border border-white"
+                  style={{
+                    top: '-4px',
+                    right: '-4px',
+                    width: '14px',
+                    height: '14px',
+                    minWidth: '14px',
+                    lineHeight: '1',
+                    padding: 0
+                  }}
+                >
                   {unreadCount}
                 </span>
               )}
@@ -196,7 +209,15 @@ const Header: React.FC<HeaderProps> = ({ user, cartCount, searchQuery, setSearch
                       )}
                     </div>
                     <div className="p-3 text-center border-t border-neutral-50">
-                      <button className="text-[9px] uppercase tracking-widest font-bold opacity-30 hover:opacity-100 transition-opacity">Xem tất cả</button>
+                      <button 
+                        onClick={() => {
+                          setIsNotificationsOpen(false);
+                          setIsAllNotificationsModalOpen(true);
+                        }}
+                        className="text-[9px] uppercase tracking-widest font-bold opacity-30 hover:opacity-100 transition-opacity"
+                      >
+                        Xem tất cả
+                      </button>
                     </div>
                   </motion.div>
                 </>
@@ -204,10 +225,23 @@ const Header: React.FC<HeaderProps> = ({ user, cartCount, searchQuery, setSearch
             </AnimatePresence>
           </div>
 
-          <Link to="/cart" className="relative hover:opacity-50 transition-opacity">
+          <Link to="/cart" className="relative hover:opacity-50 transition-opacity flex items-center justify-center">
             <ShoppingBag className="w-5 h-5" strokeWidth={1.5} />
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 text-[8px] font-bold">{cartCount}</span>
+              <span 
+                className="absolute bg-rose-500 text-white text-[8px] rounded-full flex items-center justify-center font-bold border border-white"
+                style={{
+                  top: '-4px',
+                  right: '-4px',
+                  width: '14px',
+                  height: '14px',
+                  minWidth: '14px',
+                  lineHeight: '1',
+                  padding: 0
+                }}
+              >
+                {cartCount}
+              </span>
             )}
           </Link>
         </div>
@@ -316,6 +350,83 @@ const Header: React.FC<HeaderProps> = ({ user, cartCount, searchQuery, setSearch
               <div className="mt-auto pt-20">
                 <p className="text-[10px] uppercase tracking-[0.3em] font-bold opacity-30 mb-4">CTUS LUX HERITAGE</p>
                 <p className="text-[11px] text-neutral-400 leading-relaxed italic">"Phong cách là cách để nói bạn là ai mà không cần phải nói."</p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* All Notifications Modal */}
+      <AnimatePresence>
+        {isAllNotificationsModalOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAllNotificationsModalOpen(false)}
+              className="fixed inset-0 bg-black/40 z-[999] backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: 'spring', duration: 0.5 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-white/95 backdrop-blur-md border border-neutral-100 shadow-2xl rounded-2xl overflow-hidden z-[1000] max-h-[80vh] flex flex-col"
+            >
+              <div className="p-6 border-b border-neutral-100 flex justify-between items-center bg-neutral-50/50">
+                <div>
+                  <h3 className="text-xl font-serif uppercase tracking-wider">Tất cả thông báo</h3>
+                  <p className="text-[10px] text-neutral-400 uppercase tracking-widest mt-1">Lịch sử thông báo của bạn</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  {unreadCount > 0 && (
+                    <button 
+                      onClick={() => {
+                        onMarkAllRead();
+                      }}
+                      className="text-[10px] uppercase tracking-widest text-rose-500 hover:opacity-75 font-bold"
+                    >
+                      Đọc tất cả ({unreadCount})
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setIsAllNotificationsModalOpen(false)}
+                    className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {notifications.length > 0 ? (
+                  notifications.map((n) => (
+                    <div 
+                      key={n.id} 
+                      onClick={() => {
+                        onMarkAsRead(n.id);
+                        if (n.link) window.location.href = n.link;
+                        setIsAllNotificationsModalOpen(false);
+                      }}
+                      className={`p-5 border border-neutral-100 rounded-xl cursor-pointer hover:border-rose-300 hover:bg-rose-50/10 transition-all ${!n.isRead ? 'bg-rose-50/20 border-rose-200/50' : 'bg-white'}`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className={`text-[9px] font-bold px-3 py-1 rounded-full ${n.type === 'ORDER' ? 'bg-blue-50 text-blue-500' : n.type === 'PROMOTION' ? 'bg-pink-50 text-pink-500' : 'bg-neutral-100 text-neutral-500'}`}>
+                          {n.type}
+                        </span>
+                        <span className="text-[10px] text-neutral-400">{new Date(n.createdAt).toLocaleString('vi-VN')}</span>
+                      </div>
+                      <h4 className={`text-sm mb-1.5 ${!n.isRead ? 'font-bold' : 'font-medium'}`}>{n.title}</h4>
+                      <p className="text-xs text-neutral-500 leading-relaxed">{n.content}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="py-20 text-center">
+                    <Bell className="w-12 h-12 text-neutral-200 mx-auto mb-4" strokeWidth={1} />
+                    <p className="text-xs text-neutral-400 uppercase tracking-widest">Không có thông báo nào</p>
+                  </div>
+                )}
               </div>
             </motion.div>
           </>

@@ -25,10 +25,13 @@ interface Conversation {
   updatedAt: string;
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 'http://localhost:8900/api';
+const WS_BASE_URL = API_BASE_URL.replace(/^http/, 'ws').replace(/\/api$/, '');
+
 const ENDPOINTS = {
-  chatHistory: (id: number) => `http://localhost:8900/api/chat/history/${id}`,
-  conversations: `http://localhost:8900/api/chat/conversations`,
-  chatWS: `http://localhost:8900/ws-chat`
+  chatHistory: (id: number) => `${API_BASE_URL}/chat/history/${id}`,
+  conversations: `${API_BASE_URL}/chat/conversations`,
+  chatWS: `${WS_BASE_URL}/ws-chat`
 };
 
 const AdminChat: React.FC = () => {
@@ -283,7 +286,7 @@ const AdminChat: React.FC = () => {
                             <ShoppingBag size={16} />
                             <span className="text-[10px] font-bold uppercase tracking-widest chat-text-white">Sản phẩm quan tâm</span>
                           </div>
-                          <img src={`http://localhost:8900/api/catalog/products/images/${msg.productImage}`} className="w-full h-40 object-cover rounded-xl" alt="" />
+                          <img src={`${API_BASE_URL}/catalog/products/images/${msg.productImage}`} className="w-full h-40 object-cover rounded-xl" alt="" />
                           <p className="font-bold text-sm chat-text-white">{msg.productName}</p>
                         </div>
                       ) : (

@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { Trash2, Plus, Minus, ChevronLeft, ArrowRight, ShoppingBag } from 'lucide-react';
 import type { CartItem } from './api';
 
