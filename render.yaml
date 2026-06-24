@@ -30,6 +30,11 @@ services:
     envVars:
       - key: PORT
         value: 8811
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: user-service
+          type: web
+          property: host
       - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
         value: http://${EUREKA_SERVER_HOST}:8761/eureka
       - key: EUREKA_SERVER_HOST
@@ -70,6 +75,11 @@ services:
     envVars:
       - key: PORT
         value: 8816
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: brand-service
+          type: web
+          property: host
       - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
         value: http://${EUREKA_SERVER_HOST}:8761/eureka
       - key: EUREKA_SERVER_HOST
@@ -110,6 +120,11 @@ services:
     envVars:
       - key: PORT
         value: 8810
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: product-catalog-service
+          type: web
+          property: host
       - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
         value: http://${EUREKA_SERVER_HOST}:8761/eureka
       - key: EUREKA_SERVER_HOST
@@ -150,6 +165,11 @@ services:
     envVars:
       - key: PORT
         value: 8813
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: order-service
+          type: web
+          property: host
       - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
         value: http://${EUREKA_SERVER_HOST}:8761/eureka
       - key: EUREKA_SERVER_HOST
@@ -200,6 +220,11 @@ services:
     envVars:
       - key: PORT
         value: 8817
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: chat-service
+          type: web
+          property: host
       - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
         value: http://${EUREKA_SERVER_HOST}:8761/eureka
       - key: EUREKA_SERVER_HOST
@@ -240,6 +265,11 @@ services:
     envVars:
       - key: PORT
         value: 8812
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: product-recommendation-service
+          type: web
+          property: host
       - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
         value: http://${EUREKA_SERVER_HOST}:8761/eureka
       - key: EUREKA_SERVER_HOST
@@ -280,6 +310,11 @@ services:
     envVars:
       - key: PORT
         value: 8815
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: email-service
+          type: web
+          property: host
       - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
         value: http://${EUREKA_SERVER_HOST}:8761/eureka
       - key: EUREKA_SERVER_HOST
@@ -298,6 +333,11 @@ services:
     envVars:
       - key: PORT
         value: 8900
+      - key: EUREKA_INSTANCE_HOSTNAME
+        fromService:
+          name: api-gateway
+          type: web
+          property: host
       - key: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
         value: http://${EUREKA_SERVER_HOST}:8761/eureka
       - key: EUREKA_SERVER_HOST
